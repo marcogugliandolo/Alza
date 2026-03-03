@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  ahorra-pro:
+    build: .
+    container_name: ahorra-pro
+    ports:
+      - "3000:3000"
+    volumes:
+      - ahorra_pro_data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+
+volumes:
+  ahorra_pro_data:
