@@ -31,7 +31,8 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT UNIQUE,
     icon TEXT,
-    color TEXT
+    color TEXT,
+    budget REAL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS expenses (
@@ -40,6 +41,16 @@ db.exec(`
     description TEXT,
     date TEXT NOT NULL,
     category_id INTEGER,
+    FOREIGN KEY (category_id) REFERENCES categories (id)
+  );
+
+  CREATE TABLE IF NOT EXISTS recurring_expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    amount REAL NOT NULL,
+    description TEXT,
+    category_id INTEGER,
+    frequency TEXT NOT NULL, -- 'monthly', 'weekly'
+    next_date TEXT NOT NULL,
     FOREIGN KEY (category_id) REFERENCES categories (id)
   );
 
@@ -209,6 +220,50 @@ async function startServer() {
   app.delete("/api/goals/:id", isAuthenticated, (req, res) => {
     db.prepare("DELETE FROM goals WHERE id = ?").run(req.params.id);
     res.json({ success: true });
+  });
+
+  app.patch("/api/categories/:id/budget", isAuthenticated, (req, res) => {
+    const { budget } = req.body;
+    db.prepare("UPDATE categories SET budget = ? WHERE id = ?").run(budget, req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/recurring", isAuthenticated, (req, res) => {
+    const recurring = db.prepare(`
+      SELECT r.*, c.name as category_name, c.icon as category_icon, c.color as category_color 
+      FROM recurring_expenses r 
+      LEFT JOIN categories c ON r.category_id = c.id
+    `).all();
+    res.json(recurring);
+  });
+
+  app.post("/api/recurring", isAuthenticated, (req, res) => {
+    const { amount, description, category_id, frequency, next_date } = req.body;
+    const result = db.prepare("INSERT INTO recurring_expenses (amount, description, category_id, frequency, next_date) VALUES (?, ?, ?, ?, ?)")
+      .run(amount, description, category_id, frequency, next_date);
+    res.json({ id: result.lastInsertRowid });
+  });
+
+  app.delete("/api/recurring/:id", isAuthenticated, (req, res) => {
+    db.prepare("DELETE FROM recurring_expenses WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/expenses/export", isAuthenticated, (req, res) => {
+    const expenses = db.prepare(`
+      SELECT e.date, e.amount, e.description, c.name as category
+      FROM expenses e 
+      LEFT JOIN categories c ON e.category_id = c.id
+      ORDER BY date DESC
+    `).all() as any[];
+    
+    const headers = ["Fecha", "Importe", "Descripción", "Categoría"];
+    const rows = expenses.map(e => [e.date, e.amount, e.description || "", e.category || "Sin categoría"]);
+    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+    
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=gastos.csv");
+    res.send(csv);
   });
 
   // Vite middleware for development

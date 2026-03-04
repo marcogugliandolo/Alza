@@ -21,7 +21,16 @@ import {
   Sun,
   LogOut,
   Lock,
-  User as UserIcon
+  User as UserIcon,
+  Search,
+  Download,
+  Filter,
+  Sparkles,
+  MessageSquare,
+  X,
+  Camera,
+  RefreshCw,
+  ArrowRight
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -38,7 +47,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { cn, type Category, type Expense, type Goal } from './lib/utils';
+import Markdown from 'react-markdown';
+import { GoogleGenAI } from "@google/genai";
+import { cn, type Category, type Expense, type Goal, type RecurringExpense } from './lib/utils';
 
 const ICON_MAP: Record<string, any> = {
   Utensils,
@@ -46,7 +57,16 @@ const ICON_MAP: Record<string, any> = {
   Home,
   Gamepad2,
   HeartPulse,
-  MoreHorizontal
+  MoreHorizontal,
+  Search,
+  Download,
+  Filter,
+  Sparkles,
+  MessageSquare,
+  X,
+  Camera,
+  RefreshCw,
+  ArrowRight
 };
 
 export default function App() {
@@ -61,10 +81,20 @@ export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [activeChartTab, setActiveChartTab] = useState<'categories' | 'trend'>('categories');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [showFilters, setShowFilters] = useState(false);
+  const [showAIAnalyst, setShowAIAnalyst] = useState(false);
+  const [showRecurringForm, setShowRecurringForm] = useState(false);
+  const [newRecurring, setNewRecurring] = useState({ amount: '', description: '', category_id: '', frequency: 'monthly' as const, next_date: format(new Date(), 'yyyy-MM-dd') });
+  const [aiMessages, setAiMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [scanningReceipt, setScanningReceipt] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
@@ -186,10 +216,11 @@ export default function App() {
     if (!user) return;
     try {
       const headers = getAuthHeaders();
-      const [expRes, catRes, goalRes] = await Promise.all([
+      const [expRes, catRes, goalRes, recRes] = await Promise.all([
         fetch('/api/expenses', { headers }),
         fetch('/api/categories', { headers }),
-        fetch('/api/goals', { headers })
+        fetch('/api/goals', { headers }),
+        fetch('/api/recurring', { headers })
       ]);
       
       if (expRes.status === 401 || catRes.status === 401 || goalRes.status === 401) {
@@ -198,14 +229,16 @@ export default function App() {
         return;
       }
 
-      const [expData, catData, goalData] = await Promise.all([
+      const [expData, catData, goalData, recData] = await Promise.all([
         expRes.json(),
         catRes.json(),
-        goalRes.json()
+        goalRes.json(),
+        recRes.json()
       ]);
       setExpenses(expData);
       setCategories(catData);
       setGoals(goalData);
+      setRecurringExpenses(recData);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -213,6 +246,140 @@ export default function App() {
     }
   };
 
+  const handleUpdateBudget = async (categoryId: number, budget: number) => {
+    try {
+      const res = await fetch(`/api/categories/${categoryId}/budget`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ budget })
+      });
+      if (res.ok) fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAddRecurring = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/recurring', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newRecurring)
+      });
+      if (res.ok) {
+        fetchData();
+        setShowRecurringForm(false);
+        setNewRecurring({ amount: '', description: '', category_id: '', frequency: 'monthly', next_date: format(new Date(), 'yyyy-MM-dd') });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteRecurring = async (id: number) => {
+    try {
+      const res = await fetch(`/api/recurring/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await fetch('/api/expenses/export', { headers: getAuthHeaders() });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'gastos.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAISend = async (text: string) => {
+    if (!text.trim()) return;
+    const newMessages = [...aiMessages, { role: 'user' as const, text }];
+    setAiMessages(newMessages);
+    setAiLoading(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+      const model = ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `Eres un analista financiero personal experto. Aquí están mis datos actuales:
+              Gastos: ${JSON.stringify(expenses.map(e => ({ amount: e.amount, desc: e.description, cat: e.category_name, date: e.date })))}
+              Categorías y Presupuestos: ${JSON.stringify(categories.map(c => ({ name: c.name, budget: c.budget })))}
+              Metas: ${JSON.stringify(goals.map(g => ({ name: g.name, target: g.target_amount, current: g.current_amount })))}
+              
+              Responde de forma concisa y útil en español. Usuario pregunta: ${text}` }]
+          }
+        ]
+      });
+      const response = await model;
+      setAiMessages([...newMessages, { role: 'model', text: response.text || 'No pude procesar tu solicitud.' }]);
+    } catch (err) {
+      console.error(err);
+      setAiMessages([...newMessages, { role: 'model', text: 'Hubo un error al conectar con la IA.' }]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleScanReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setScanningReceipt(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = (reader.result as string).split(',')[1];
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [
+            {
+              parts: [
+                { inlineData: { data: base64Data, mimeType: file.type } },
+                { text: "Analiza este ticket y devuelve un JSON con: amount (número), description (texto corto), date (YYYY-MM-DD), category_name (una de: Comida, Transporte, Vivienda, Entretenimiento, Salud, Otros). Solo el JSON." }
+              ]
+            }
+          ],
+          config: { responseMimeType: "application/json" }
+        });
+
+        const result = JSON.parse(response.text || '{}');
+        const category = categories.find(c => c.name.toLowerCase() === (result.category_name || '').toLowerCase()) || categories.find(c => c.name === 'Otros');
+        
+        setNewExpense({
+          amount: result.amount?.toString() || '',
+          description: result.description || 'Gasto escaneado',
+          date: result.date || format(new Date(), 'yyyy-MM-dd'),
+          category_id: category?.id.toString() || ''
+        });
+        setShowExpenseForm(true);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setScanningReceipt(false);
+    }
+  };
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newExpense.amount || !newExpense.category_id || !user) return;
@@ -283,19 +450,46 @@ export default function App() {
     }
   };
 
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(e => {
+      const matchesSearch = e.description?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           e.category_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const expenseDate = parseISO(e.date);
+      const matchesMonth = selectedMonth === -1 || (expenseDate.getMonth() === selectedMonth && expenseDate.getFullYear() === selectedYear);
+      
+      const matchesRange = (!dateRange.start || expenseDate >= parseISO(dateRange.start)) &&
+                          (!dateRange.end || expenseDate <= parseISO(dateRange.end));
+
+      return matchesSearch && matchesMonth && matchesRange;
+    });
+  }, [expenses, searchTerm, selectedMonth, selectedYear, dateRange]);
+
+  const monthlyStats = useMemo(() => {
+    const currentMonthExpenses = expenses.filter(e => {
+      const d = parseISO(e.date);
+      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    });
+
+    const total = currentMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+    
+    const byCategory = currentMonthExpenses.reduce((acc, e) => {
+      acc[e.category_name] = (acc[e.category_name] || 0) + e.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const chartData = Object.entries(byCategory).map(([name, value]) => ({
+      name,
+      value,
+      color: categories.find(c => c.name === name)?.color || '#6b7280'
+    }));
+
+    return { total, chartData };
+  }, [expenses, selectedMonth, selectedYear, categories]);
+
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const filteredExpenses = expenses.filter(e => {
-    const date = parseISO(e.date);
-    return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
-  });
-
-  const monthlyExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-  const categoryData = categories.map(cat => ({
-    name: cat.name,
-    value: filteredExpenses.filter(e => e.category_id === cat.id).reduce((sum, e) => sum + e.amount, 0),
-    color: cat.color
-  })).filter(d => d.value > 0);
+  const monthlyExpenses = monthlyStats.total;
+  const categoryData = monthlyStats.chartData;
 
   const trendData = useMemo(() => {
     const data = [];
@@ -400,6 +594,85 @@ export default function App() {
           >
             {darkMode ? <Sun size={24} /> : <Moon size={24} />}
           </button>
+
+          {/* AI Analyst Chat */}
+          <div className="fixed bottom-6 right-24 z-40">
+            <button
+              onClick={() => setShowAIAnalyst(!showAIAnalyst)}
+              className="p-4 bg-emerald-600 text-white rounded-2xl shadow-xl hover:scale-105 transition-all flex items-center gap-2 font-bold"
+            >
+              <Sparkles size={24} />
+              <span className="hidden sm:inline">Analista IA</span>
+            </button>
+
+            <AnimatePresence>
+              {showAIAnalyst && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                  className="absolute bottom-20 right-0 w-[90vw] max-w-md bg-white dark:bg-stone-900 rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 flex flex-col h-[500px] overflow-hidden"
+                >
+                  <div className="p-4 bg-emerald-600 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={20} />
+                      <span className="font-bold">Analista Financiero IA</span>
+                    </div>
+                    <button onClick={() => setShowAIAnalyst(false)}><X size={20} /></button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {aiMessages.length === 0 && (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <MessageSquare className="text-emerald-600" size={32} />
+                        </div>
+                        <p className="text-stone-500 dark:text-stone-400 text-sm">¡Hola! Soy tu analista personal. Pregúntame sobre tus gastos o cómo ahorrar mejor.</p>
+                      </div>
+                    )}
+                    {aiMessages.map((m, i) => (
+                      <div key={i} className={cn("flex", m.role === 'user' ? "justify-end" : "justify-start")}>
+                        <div className={cn(
+                          "max-w-[80%] p-3 rounded-2xl text-sm",
+                          m.role === 'user' 
+                            ? "bg-emerald-600 text-white rounded-tr-none" 
+                            : "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 rounded-tl-none"
+                        )}>
+                          <Markdown>{m.text}</Markdown>
+                        </div>
+                      </div>
+                    ))}
+                    {aiLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-stone-100 dark:bg-stone-800 p-3 rounded-2xl rounded-tl-none">
+                          <Loader2 className="animate-spin text-emerald-600" size={18} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 border-t border-stone-100 dark:border-stone-800">
+                    <form 
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const input = e.currentTarget.elements.namedItem('message') as HTMLInputElement;
+                        handleAISend(input.value);
+                        input.value = '';
+                      }}
+                      className="flex gap-2"
+                    >
+                      <input 
+                        name="message"
+                        placeholder="Escribe tu pregunta..."
+                        className="flex-1 bg-stone-50 dark:bg-stone-800 border-none rounded-xl px-4 py-2 text-sm text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <button type="submit" className="p-2 bg-emerald-600 text-white rounded-xl"><ArrowRight size={18} /></button>
+                    </form>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     );
@@ -444,6 +717,85 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Buscar gastos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 transition-all text-stone-900 dark:text-stone-100"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                "p-3 rounded-2xl border transition-all flex items-center gap-2 text-sm font-bold",
+                showFilters 
+                  ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400" 
+                  : "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400"
+              )}
+            >
+              <Filter size={18} />
+              Filtros
+            </button>
+            <button 
+              onClick={handleExport}
+              className="p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all flex items-center gap-2 text-sm font-bold"
+            >
+              <Download size={18} />
+              Exportar
+            </button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mb-8"
+            >
+              <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2">Rango de Fechas</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="date" 
+                      value={dateRange.start}
+                      onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                      className="flex-1 p-2 bg-stone-50 dark:bg-stone-800 border-none rounded-xl text-sm text-stone-900 dark:text-stone-100"
+                    />
+                    <span className="text-stone-400">a</span>
+                    <input 
+                      type="date" 
+                      value={dateRange.end}
+                      onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                      className="flex-1 p-2 bg-stone-50 dark:bg-stone-800 border-none rounded-xl text-sm text-stone-900 dark:text-stone-100"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-end">
+                  <button 
+                    onClick={() => {
+                      setDateRange({ start: '', end: '' });
+                      setSearchTerm('');
+                      setSelectedMonth(new Date().getMonth());
+                    }}
+                    className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 text-xs font-bold flex items-center gap-1"
+                  >
+                    <RefreshCw size={14} />
+                    Limpiar Filtros
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Summary Cards - Refined */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <motion.div 
@@ -715,6 +1067,113 @@ export default function App() {
                 )}
               </div>
             </div>
+
+            {/* Budgets & Recurring */}
+            <div className="bg-white dark:bg-stone-900 p-8 rounded-[2rem] border border-stone-200/60 dark:border-stone-800 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Presupuestos por Categoría</h3>
+                  <p className="text-stone-400 dark:text-stone-500 text-sm">Controla tus límites mensuales</p>
+                </div>
+                <div className="p-2 bg-stone-50 dark:bg-stone-800 rounded-xl text-stone-400">
+                  <BarChart3 size={20} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {categories.map(cat => {
+                  const spent = expenses
+                    .filter(e => e.category_id === cat.id && parseISO(e.date).getMonth() === selectedMonth)
+                    .reduce((sum, e) => sum + e.amount, 0);
+                  const percentage = cat.budget > 0 ? Math.min((spent / cat.budget) * 100, 100) : 0;
+                  const isOver = cat.budget > 0 && spent > cat.budget;
+
+                  return (
+                    <div key={cat.id} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                          <span className="text-sm font-bold text-stone-700 dark:text-stone-300">{cat.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-stone-900 dark:text-stone-100">{spent.toLocaleString()}€</span>
+                          <span className="text-stone-400 text-[10px]">/</span>
+                          <input 
+                            type="number"
+                            defaultValue={cat.budget}
+                            onBlur={(e) => handleUpdateBudget(cat.id, parseFloat(e.target.value) || 0)}
+                            className="w-16 bg-transparent border-none p-0 text-[10px] font-black text-stone-400 focus:text-emerald-600 focus:ring-0 transition-colors"
+                          />
+                        </div>
+                      </div>
+                      <div className="h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage}%` }}
+                          className={cn(
+                            "h-full rounded-full transition-all duration-1000",
+                            isOver ? "bg-red-500" : "bg-emerald-500"
+                          )}
+                        />
+                      </div>
+                      {isOver && (
+                        <p className="text-[10px] text-red-500 font-bold flex items-center gap-1">
+                          <TrendingUp size={10} />
+                          ¡Presupuesto excedido!
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-stone-900 p-8 rounded-[2rem] border border-stone-200/60 dark:border-stone-800 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Gastos Recurrentes</h3>
+                  <p className="text-stone-400 dark:text-stone-500 text-sm">Suscripciones y pagos fijos</p>
+                </div>
+                <button 
+                  onClick={() => setShowRecurringForm(true)}
+                  className="p-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-100 transition-all"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {recurringExpenses.length > 0 ? recurringExpenses.map(rec => {
+                  const Icon = ICON_MAP[rec.category_icon] || MoreHorizontal;
+                  return (
+                    <div key={rec.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2.5 rounded-xl text-white" style={{ backgroundColor: rec.category_color }}>
+                          <Icon size={18} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{rec.description}</div>
+                          <div className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest">
+                            {rec.frequency === 'monthly' ? 'Mensual' : 'Semanal'} • Próximo: {format(parseISO(rec.next_date), 'dd MMM', { locale: es })}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="font-black text-stone-900 dark:text-stone-100">{rec.amount.toLocaleString()}€</div>
+                        <button 
+                          onClick={() => handleDeleteRecurring(rec.id)}
+                          className="text-stone-300 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="text-center py-8 text-stone-400 italic text-sm">No tienes gastos recurrentes configurados</div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Sidebar Area */}
@@ -820,7 +1279,24 @@ export default function App() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
             >
-              <h2 className="text-2xl font-bold mb-6 text-stone-900 dark:text-stone-100">Registrar Gasto</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Registrar Gasto</h2>
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleScanReceipt}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                  <button 
+                    type="button"
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all"
+                  >
+                    {scanningReceipt ? <Loader2 className="animate-spin" size={16} /> : <Camera size={16} />}
+                    Escanear Ticket
+                  </button>
+                </div>
+              </div>
               <form onSubmit={handleAddExpense} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Monto (€)</label>
@@ -952,6 +1428,105 @@ export default function App() {
                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95"
                   >
                     Crear Meta
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Recurring Expense Modal */}
+      <AnimatePresence>
+        {showRecurringForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowRecurringForm(false)}
+              className="absolute inset-0 bg-stone-900/40 dark:bg-stone-950/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
+            >
+              <h2 className="text-2xl font-bold mb-6 text-stone-900 dark:text-stone-100">Nuevo Gasto Recurrente</h2>
+              <form onSubmit={handleAddRecurring} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Monto (€)</label>
+                  <input 
+                    type="number" 
+                    required
+                    value={newRecurring.amount}
+                    onChange={e => setNewRecurring({...newRecurring, amount: e.target.value})}
+                    placeholder="0.00"
+                    className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-xl p-4 text-2xl font-black text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Descripción</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newRecurring.description}
+                    onChange={e => setNewRecurring({...newRecurring, description: e.target.value})}
+                    placeholder="Ej. Netflix, Gimnasio..."
+                    className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-xl p-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Frecuencia</label>
+                    <select 
+                      value={newRecurring.frequency}
+                      onChange={e => setNewRecurring({...newRecurring, frequency: e.target.value as any})}
+                      className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-xl p-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                    >
+                      <option value="monthly">Mensual</option>
+                      <option value="weekly">Semanal</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Categoría</label>
+                    <select 
+                      required
+                      value={newRecurring.category_id}
+                      onChange={e => setNewRecurring({...newRecurring, category_id: e.target.value})}
+                      className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-xl p-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                    >
+                      <option value="">Seleccionar</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Próxima Fecha</label>
+                  <input 
+                    type="date" 
+                    required
+                    value={newRecurring.next_date}
+                    onChange={e => setNewRecurring({...newRecurring, next_date: e.target.value})}
+                    className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-xl p-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setShowRecurringForm(false)}
+                    className="flex-1 py-4 rounded-xl font-bold text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95"
+                  >
+                    Guardar
                   </button>
                 </div>
               </form>

@@ -10,6 +10,7 @@ export interface Category {
   name: string;
   icon: string;
   color: string;
+  budget: number;
 }
 
 export interface Expense {
@@ -18,6 +19,18 @@ export interface Expense {
   description: string;
   date: string;
   category_id: number;
+  category_name: string;
+  category_icon: string;
+  category_color: string;
+}
+
+export interface RecurringExpense {
+  id: number;
+  amount: number;
+  description: string;
+  category_id: number;
+  frequency: 'monthly' | 'weekly';
+  next_date: string;
   category_name: string;
   category_icon: string;
   category_color: string;
