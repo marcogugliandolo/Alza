@@ -3,8 +3,16 @@ import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
-
+import session from "express-session";
+import bcrypt from "bcryptjs";
 import fs from "fs";
+
+declare module "express-session" {
+  interface SessionData {
+    userId: number;
+    username: string;
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,6 +50,12 @@ db.exec(`
     current_amount REAL DEFAULT 0,
     deadline TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL
+  );
 `);
 
 // Seed categories if empty
@@ -56,19 +70,103 @@ if (categoryCount.count === 0) {
   insert.run("Otros", "MoreHorizontal", "#6b7280");
 }
 
+// Seed default user if empty
+const userCount = db.prepare("SELECT count(*) as count FROM users").get() as { count: number };
+if (userCount.count === 0) {
+  const hashedPassword = bcrypt.hashSync("superman94", 10);
+  db.prepare("INSERT INTO users (username, password) VALUES (?, ?)").run("gugliama", hashedPassword);
+  console.log("Default user created: gugliama / superman94");
+} else {
+  // Ensure the requested user exists and has the correct password
+  const hashedPassword = bcrypt.hashSync("superman94", 10);
+  const existingUser = db.prepare("SELECT * FROM users WHERE username = ?").get("gugliama");
+  if (!existingUser) {
+    db.prepare("INSERT INTO users (username, password) VALUES (?, ?)").run("gugliama", hashedPassword);
+    console.log("User 'gugliama' created.");
+  } else {
+    // Force update password to be sure
+    db.prepare("UPDATE users SET password = ? WHERE username = ?").run(hashedPassword, "gugliama");
+    console.log("User 'gugliama' password updated.");
+  }
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.set("trust proxy", 1); // Trust the first proxy (nginx)
   app.use(express.json());
+  app.use(session({
+    secret: "ahorra-secret-key",
+    resave: true,
+    saveUninitialized: true,
+    proxy: true, // Trust the proxy for secure cookies
+    cookie: { 
+      secure: true, // Required for SameSite=None
+      sameSite: "none", // Required for cross-origin iframe
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 // 24 hours
+    }
+  }));
+
+  // Auth Middleware
+  const isAuthenticated = (req: any, res: any, next: any) => {
+    // Check for session OR custom header (for iframe compatibility)
+    const userId = req.session.userId || req.headers['x-user-id'];
+    if (userId) {
+      // If header was used, ensure it's a valid user (basic check)
+      if (!req.session.userId && req.headers['x-user-id']) {
+        const user = db.prepare("SELECT id, username FROM users WHERE id = ?").get(req.headers['x-user-id']) as any;
+        if (user) {
+          req.session.userId = user.id;
+          req.session.username = user.username;
+        } else {
+          return res.status(401).json({ error: "No autorizado" });
+        }
+      }
+      return next();
+    }
+    res.status(401).json({ error: "No autorizado" });
+  };
+
+  // Auth Routes
+  app.post("/api/auth/login", (req, res) => {
+    const { username, password } = req.body;
+    console.log(`Login attempt for user: ${username}`);
+    const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username) as any;
+    
+    if (user && bcrypt.compareSync(password, user.password)) {
+      console.log(`Login successful for user: ${username}`);
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      res.json({ id: user.id, username: user.username });
+    } else {
+      console.log(`Login failed for user: ${username}`);
+      res.status(401).json({ error: "Credenciales inválidas" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ success: true });
+    });
+  });
+
+  app.get("/api/auth/me", (req, res) => {
+    if (req.session.userId) {
+      res.json({ id: req.session.userId, username: req.session.username });
+    } else {
+      res.status(401).json({ error: "No autenticado" });
+    }
+  });
 
   // API Routes
-  app.get("/api/categories", (req, res) => {
+  app.get("/api/categories", isAuthenticated, (req, res) => {
     const categories = db.prepare("SELECT * FROM categories").all();
     res.json(categories);
   });
 
-  app.get("/api/expenses", (req, res) => {
+  app.get("/api/expenses", isAuthenticated, (req, res) => {
     const expenses = db.prepare(`
       SELECT e.*, c.name as category_name, c.icon as category_icon, c.color as category_color 
       FROM expenses e 
@@ -78,37 +176,37 @@ async function startServer() {
     res.json(expenses);
   });
 
-  app.post("/api/expenses", (req, res) => {
+  app.post("/api/expenses", isAuthenticated, (req, res) => {
     const { amount, description, date, category_id } = req.body;
     const result = db.prepare("INSERT INTO expenses (amount, description, date, category_id) VALUES (?, ?, ?, ?)")
       .run(amount, description, date, category_id);
     res.json({ id: result.lastInsertRowid });
   });
 
-  app.delete("/api/expenses/:id", (req, res) => {
+  app.delete("/api/expenses/:id", isAuthenticated, (req, res) => {
     db.prepare("DELETE FROM expenses WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });
 
-  app.get("/api/goals", (req, res) => {
+  app.get("/api/goals", isAuthenticated, (req, res) => {
     const goals = db.prepare("SELECT * FROM goals").all();
     res.json(goals);
   });
 
-  app.post("/api/goals", (req, res) => {
+  app.post("/api/goals", isAuthenticated, (req, res) => {
     const { name, target_amount, deadline } = req.body;
     const result = db.prepare("INSERT INTO goals (name, target_amount, deadline) VALUES (?, ?, ?)")
       .run(name, target_amount, deadline);
     res.json({ id: result.lastInsertRowid });
   });
 
-  app.patch("/api/goals/:id", (req, res) => {
+  app.patch("/api/goals/:id", isAuthenticated, (req, res) => {
     const { current_amount } = req.body;
     db.prepare("UPDATE goals SET current_amount = ? WHERE id = ?").run(current_amount, req.params.id);
     res.json({ success: true });
   });
 
-  app.delete("/api/goals/:id", (req, res) => {
+  app.delete("/api/goals/:id", isAuthenticated, (req, res) => {
     db.prepare("DELETE FROM goals WHERE id = ?").run(req.params.id);
     res.json({ success: true });
   });

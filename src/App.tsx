@@ -18,7 +18,10 @@ import {
   Loader2,
   BarChart3,
   Moon,
-  Sun
+  Sun,
+  LogOut,
+  Lock,
+  User as UserIcon
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -47,6 +50,14 @@ const ICON_MAP: Record<string, any> = {
 };
 
 export default function App() {
+  const [user, setUser] = useState<{ id: number, username: string } | null>(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [authLoading, setAuthLoading] = useState(true);
+  const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [authError, setAuthError] = useState('');
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -79,16 +90,114 @@ export default function App() {
   const [newGoal, setNewGoal] = useState({ name: '', target_amount: '', deadline: '' });
 
   useEffect(() => {
-    fetchData();
+    checkAuth();
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+      fetchData();
+    } else {
+      localStorage.removeItem('user');
+    }
+  }, [user]);
+
+  const getAuthHeaders = () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (user) {
+      headers['X-User-Id'] = user.id.toString();
+    }
+    return headers;
+  };
+
+  const checkAuth = async () => {
+    console.log("Checking auth session...");
     try {
+      const headers: Record<string, string> = {};
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        headers['X-User-Id'] = JSON.parse(savedUser).id.toString();
+      }
+
+      const res = await fetch('/api/auth/me', { headers });
+      console.log("Auth check response status:", res.status);
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Auth check successful, user:", data);
+        setUser(data);
+      } else if (!savedUser) {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    const trimmedUsername = loginData.username.trim();
+    console.log("Attempting login for:", trimmedUsername);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...loginData, username: trimmedUsername })
+      });
+      console.log("Login response status:", res.status);
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Login successful, user data:", data);
+        localStorage.setItem('user', JSON.stringify(data));
+        setUser(data);
+      } else {
+        const data = await res.json();
+        console.log("Login failed, error:", data.error);
+        setAuthError(data.error || 'Error al iniciar sesión');
+      }
+    } catch (error) {
+      console.error("Login request error:", error);
+      setAuthError('Error de conexión');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      setUser(null);
+      localStorage.removeItem('user');
+      setExpenses([]);
+      setCategories([]);
+      setGoals([]);
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Still clear local state
+      setUser(null);
+      localStorage.removeItem('user');
+    }
+  };
+
+  const fetchData = async () => {
+    if (!user) return;
+    try {
+      const headers = getAuthHeaders();
       const [expRes, catRes, goalRes] = await Promise.all([
-        fetch('/api/expenses'),
-        fetch('/api/categories'),
-        fetch('/api/goals')
+        fetch('/api/expenses', { headers }),
+        fetch('/api/categories', { headers }),
+        fetch('/api/goals', { headers })
       ]);
+      
+      if (expRes.status === 401 || catRes.status === 401 || goalRes.status === 401) {
+        setUser(null);
+        localStorage.removeItem('user');
+        return;
+      }
+
       const [expData, catData, goalData] = await Promise.all([
         expRes.json(),
         catRes.json(),
@@ -106,12 +215,12 @@ export default function App() {
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newExpense.amount || !newExpense.category_id) return;
+    if (!newExpense.amount || !newExpense.category_id || !user) return;
 
     try {
       await fetch('/api/expenses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ...newExpense,
           amount: parseFloat(newExpense.amount),
@@ -127,8 +236,12 @@ export default function App() {
   };
 
   const handleDeleteExpense = async (id: number) => {
+    if (!user) return;
     try {
-      await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+      await fetch(`/api/expenses/${id}`, { 
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
       fetchData();
     } catch (error) {
       console.error("Error deleting expense:", error);
@@ -137,12 +250,12 @@ export default function App() {
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGoal.name || !newGoal.target_amount) return;
+    if (!newGoal.name || !newGoal.target_amount || !user) return;
 
     try {
       await fetch('/api/goals', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           ...newGoal,
           target_amount: parseFloat(newGoal.target_amount)
@@ -157,10 +270,11 @@ export default function App() {
   };
 
   const handleUpdateGoalProgress = async (id: number, current: number, increment: number) => {
+    if (!user) return;
     try {
       await fetch(`/api/goals/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ current_amount: current + increment })
       });
       fetchData();
@@ -205,7 +319,7 @@ export default function App() {
     return data;
   }, [expenses]);
 
-  if (loading) {
+  if (authLoading || (user && loading)) {
     return (
       <div className="flex items-center justify-center h-screen bg-stone-50 dark:bg-stone-950">
         <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
@@ -213,10 +327,89 @@ export default function App() {
     );
   }
 
+  if (!user) {
+    return (
+      <div className={cn(darkMode && "dark")}>
+        <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center p-4 transition-colors duration-300">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-stone-900 w-full max-w-md p-8 rounded-[2.5rem] border border-stone-200/60 dark:border-stone-800 shadow-2xl"
+          >
+            <div className="flex flex-col items-center mb-8">
+              <div className="p-4 bg-emerald-600 rounded-2xl text-white mb-4 shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20">
+                <Wallet size={32} />
+              </div>
+              <h1 className="text-3xl font-black tracking-tight text-stone-900 dark:text-stone-100">Ahorra</h1>
+              <p className="text-stone-400 dark:text-stone-500 text-sm mt-2">Gestiona tus finanzas con inteligencia</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Usuario</label>
+                <div className="relative">
+                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+                  <input 
+                    type="text"
+                    required
+                    value={loginData.username}
+                    onChange={e => setLoginData({...loginData, username: e.target.value})}
+                    placeholder="Tu nombre de usuario"
+                    className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 pl-12 pr-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Contraseña</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+                  <input 
+                    type="password"
+                    required
+                    value={loginData.password}
+                    onChange={e => setLoginData({...loginData, password: e.target.value})}
+                    placeholder="••••••••"
+                    className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 pl-12 pr-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+              </div>
+
+              {authError && (
+                <motion.p 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-red-500 text-xs font-bold text-center"
+                >
+                  {authError}
+                </motion.p>
+              )}
+
+              <button 
+                type="submit"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95 mt-4"
+              >
+                Iniciar Sesión
+              </button>
+            </form>
+          </motion.div>
+          
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="fixed bottom-6 right-6 p-4 bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 transition-all"
+          >
+            {darkMode ? <Sun size={24} /> : <Moon size={24} />}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans pb-20 transition-colors duration-300">
-      {/* Header */}
-      <header className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 sticky top-0 z-10 px-4 py-4 sm:px-6">
+    <div className={cn(darkMode && "dark")}>
+      <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans pb-20 transition-colors duration-300">
+        {/* Header */}
+        <header className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 sticky top-0 z-10 px-4 py-4 sm:px-6">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-emerald-600 rounded-xl text-white">
@@ -231,6 +424,13 @@ export default function App() {
               aria-label="Toggle dark mode"
             >
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 text-stone-500 dark:text-stone-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 dark:hover:text-red-400 rounded-xl transition-colors"
+              aria-label="Cerrar sesión"
+            >
+              <LogOut size={20} />
             </button>
             <button 
               onClick={() => setShowExpenseForm(true)}
@@ -759,6 +959,7 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }
