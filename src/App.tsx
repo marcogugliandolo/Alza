@@ -850,7 +850,7 @@ export default function App() {
                 </div>
               </div>
               
-              <div className="h-72">
+              <div className="h-64 sm:h-72">
                 {activeChartTab === 'categories' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center h-full">
                     <div className="h-full">
