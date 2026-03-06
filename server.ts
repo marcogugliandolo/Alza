@@ -199,7 +199,17 @@ async function startServer() {
       console.log("Checking OAuth config...");
       console.log("GOOGLE_CLIENT_ID present:", !!clientId);
       console.log("GOOGLE_CLIENT_SECRET present:", !!clientSecret);
-      console.log("APP_URL from env:", process.env.APP_URL);
+
+      if (!clientId || !clientSecret) {
+        const missing = [];
+        if (!clientId) missing.push("GOOGLE_CLIENT_ID");
+        if (!clientSecret) missing.push("GOOGLE_CLIENT_SECRET");
+        
+        return res.status(400).json({ 
+          error: "Configuración incompleta", 
+          message: `Faltan los siguientes secretos en AI Studio: ${missing.join(", ")}. Asegúrate de que el interruptor 'Cloud Runtime' esté activado.` 
+        });
+      }
 
       // Detect appUrl from request to support custom domains automatically
       const host = req.get('x-forwarded-host') || req.get('host');
@@ -209,13 +219,6 @@ async function startServer() {
       
       if (host) {
         appUrl = `${protocol}://${host}`;
-      }
-
-      if (!clientId || !clientSecret) {
-        return res.status(400).json({ 
-          error: "Configuración incompleta", 
-          message: "Faltan GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET en los Secrets de AI Studio." 
-        });
       }
 
       const redirectUri = `${appUrl}/api/auth/google/callback`;
