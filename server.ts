@@ -6,6 +6,9 @@ import { fileURLToPath } from "url";
 import session from "express-session";
 import bcrypt from "bcryptjs";
 import fs from "fs";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 declare module "express-session" {
   interface SessionData {
@@ -189,24 +192,66 @@ async function startServer() {
 
   // Google OAuth Routes
   app.get("/api/auth/google/url", (req, res) => {
-    const redirectUri = `${process.env.APP_URL}/api/auth/google/callback`;
-    const params = new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID || '',
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'openid email profile',
-      access_type: 'offline',
-      prompt: 'consent'
-    });
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-    res.json({ url: authUrl });
+    try {
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      
+      // Detect appUrl from request to support custom domains automatically
+      const host = req.get('x-forwarded-host') || req.get('host');
+      const protocol = req.get('x-forwarded-proto') || 'https';
+      let appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+      
+      if (host) {
+        appUrl = `${protocol}://${host}`;
+      }
+
+      if (!clientId || !clientSecret) {
+        return res.status(400).json({ 
+          error: "Configuración incompleta", 
+          message: "Faltan GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET en los Secrets de AI Studio." 
+        });
+      }
+
+      const redirectUri = `${appUrl}/api/auth/google/callback`;
+      console.log("Generating Google Auth URL. Redirect URI:", redirectUri);
+      
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'openid email profile',
+        access_type: 'offline',
+        prompt: 'consent'
+      });
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+      res.json({ url: authUrl, redirectUri });
+    } catch (error) {
+      console.error("Error generating Google Auth URL:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 
   app.get("/api/auth/google/callback", async (req, res) => {
     const { code } = req.query;
-    const redirectUri = `${process.env.APP_URL}/api/auth/google/callback`;
+    
+    const host = req.get('x-forwarded-host') || req.get('host');
+    const protocol = req.get('x-forwarded-proto') || 'https';
+    let appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+    
+    if (host) {
+      appUrl = `${protocol}://${host}`;
+    }
+    
+    const redirectUri = `${appUrl}/api/auth/google/callback`;
+
+    console.log("Google OAuth callback received. Code present:", !!code);
+
+    if (!code) {
+      return res.status(400).send("Authorization code missing");
+    }
 
     try {
+      console.log("Exchanging code for tokens...");
       // Exchange code for tokens
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -223,9 +268,11 @@ async function startServer() {
       const tokenData = await tokenResponse.json();
       
       if (!tokenData.access_token) {
-        throw new Error('Failed to get access token');
+        console.error("Failed to get access token. Response:", tokenData);
+        throw new Error('Failed to get access token: ' + (tokenData.error_description || tokenData.error || 'Unknown error'));
       }
 
+      console.log("Access token obtained. Fetching user info...");
       // Get user info
       const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: { Authorization: `Bearer ${tokenData.access_token}` }
@@ -233,12 +280,15 @@ async function startServer() {
       const userData = await userResponse.json();
 
       if (!userData.email) {
+        console.error("Failed to get user email. Response:", userData);
         throw new Error('Failed to get user email');
       }
 
+      console.log("User email obtained:", userData.email);
       // Find or create user
       let user = db.prepare("SELECT * FROM users WHERE username = ?").get(userData.email) as any;
       if (!user) {
+        console.log("Creating new user for email:", userData.email);
         // Create user with a random password since they use Google
         const randomPassword = Math.random().toString(36).slice(-8);
         const hashedPassword = bcrypt.hashSync(randomPassword, 10);
@@ -249,6 +299,7 @@ async function startServer() {
       // Set session
       req.session.userId = user.id;
       req.session.username = user.username;
+      console.log("Session set for user:", user.username);
 
       // Send success message to parent window and close popup
       res.send(`
@@ -266,9 +317,9 @@ async function startServer() {
           </body>
         </html>
       `);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google OAuth error:', error);
-      res.status(500).send('Authentication failed');
+      res.status(500).send(`Authentication failed: ${error.message}`);
     }
   });
 

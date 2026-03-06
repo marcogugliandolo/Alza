@@ -285,12 +285,21 @@ export default function App() {
     }
   };
 
+  const [debugRedirectUri, setDebugRedirectUri] = useState<string>('');
+
   const handleGoogleLogin = async () => {
     setAuthError('');
+    setDebugRedirectUri('');
     try {
       const response = await fetch('/api/auth/google/url');
-      if (!response.ok) throw new Error('Failed to get auth URL');
-      const { url } = await response.json();
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || data.error || 'Failed to get auth URL');
+      }
+      
+      const { url, redirectUri } = data;
+      setDebugRedirectUri(redirectUri);
 
       const authWindow = window.open(
         url,
@@ -301,9 +310,9 @@ export default function App() {
       if (!authWindow) {
         setAuthError('Por favor, permite las ventanas emergentes (popups) para iniciar sesión con Google.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('OAuth error:', error);
-      setAuthError('Error al conectar con Google.');
+      setAuthError(error.message || 'Error al conectar con Google.');
     }
   };
 
@@ -858,13 +867,19 @@ export default function App() {
                 </div>
 
                 {authError && (
-                  <motion.p 
+                  <motion.div 
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-red-500 text-sm font-bold bg-red-50 dark:bg-red-950/30 p-4 rounded-2xl border border-red-100 dark:border-red-900/50"
+                    className="text-red-500 text-sm font-bold bg-red-50 dark:bg-red-950/30 p-4 rounded-2xl border border-red-100 dark:border-red-900/50 space-y-2"
                   >
-                    {authError}
-                  </motion.p>
+                    <p>{authError}</p>
+                    {debugRedirectUri && (
+                      <div className="mt-2 p-2 bg-white dark:bg-stone-900 rounded-lg border border-red-200 dark:border-red-800/50 text-[10px] font-mono break-all select-all">
+                        <p className="text-stone-400 uppercase mb-1">Copia esta URL en Google Cloud:</p>
+                        {debugRedirectUri}
+                      </div>
+                    )}
+                  </motion.div>
                 )}
 
                 <button 
