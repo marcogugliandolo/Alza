@@ -194,11 +194,11 @@ async function startServer() {
   app.get("/api/auth/google/url", (req, res) => {
     try {
       const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SEC;
       
       console.log("Checking OAuth config...");
       console.log("GOOGLE_CLIENT_ID present:", !!clientId);
-      console.log("GOOGLE_CLIENT_SECRET present:", !!clientSecret);
+      console.log("GOOGLE_CLIENT_SECRET/SEC present:", !!clientSecret);
 
       if (!clientId || !clientSecret) {
         const missing = [];
@@ -207,7 +207,7 @@ async function startServer() {
         
         return res.status(400).json({ 
           error: "Configuración incompleta", 
-          message: `Faltan los siguientes secretos en AI Studio: ${missing.join(", ")}. Asegúrate de que el interruptor 'Cloud Runtime' esté activado.` 
+          message: `Faltan los siguientes secretos en AI Studio: ${missing.join(", ")}. Asegúrate de que el nombre sea exactamente GOOGLE_CLIENT_SECRET.` 
         });
       }
 
@@ -268,7 +268,7 @@ async function startServer() {
         body: new URLSearchParams({
           code: code as string,
           client_id: process.env.GOOGLE_CLIENT_ID || '',
-          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+          client_secret: process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SEC || '',
           redirect_uri: redirectUri,
           grant_type: 'authorization_code'
         })
