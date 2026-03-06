@@ -32,7 +32,8 @@ import {
   Camera,
   RefreshCw,
   ArrowRight,
-  LayoutDashboard
+  LayoutDashboard,
+  Edit2
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -46,7 +47,8 @@ import {
   Tooltip,
   Legend
 } from 'recharts';
-import { Responsive, useContainerWidth } from 'react-grid-layout';
+import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
+const ResponsiveGridLayout = WidthProvider(Responsive);
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, subMonths } from 'date-fns';
@@ -70,7 +72,11 @@ const ICON_MAP: Record<string, any> = {
   X,
   Camera,
   RefreshCw,
-  ArrowRight
+  ArrowRight,
+  Wallet,
+  Target,
+  PieChartIcon,
+  Calendar
 };
 
 const DEFAULT_LAYOUTS = {
@@ -143,7 +149,12 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [activeChartTab, setActiveChartTab] = useState<'categories' | 'trend'>('categories');
-  const { width, containerRef, mounted } = useContainerWidth();
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [layouts, setLayouts] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedUser = localStorage.getItem('user');
@@ -192,9 +203,14 @@ export default function App() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [showUserForm, setShowUserForm] = useState(false);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [usersList, setUsersList] = useState<{id: number, username: string}[]>([]);
+  const [editingExpense, setEditingExpense] = useState<{ id: number, amount: string, description: string, category_id: string, date: string } | null>(null);
   const [newExpense, setNewExpense] = useState({ amount: '', description: '', category_id: '', date: format(new Date(), 'yyyy-MM-dd') });
   const [newGoal, setNewGoal] = useState({ name: '', target_amount: '', deadline: '' });
   const [newUser, setNewUser] = useState({ username: '', password: '' });
+  const [newCategory, setNewCategory] = useState({ name: '', icon: 'MoreHorizontal', color: '#10b981' });
 
   useEffect(() => {
     checkAuth();
@@ -381,6 +397,28 @@ export default function App() {
     }
   };
 
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newCategory)
+      });
+      if (res.ok) {
+        setShowCategoryForm(false);
+        setNewCategory({ name: '', icon: 'MoreHorizontal', color: '#10b981' });
+        fetchData();
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Error al crear la categoría');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al crear la categoría');
+    }
+  };
+
   const handleDeleteRecurring = async (id: number) => {
     try {
       const res = await fetch(`/api/recurring/${id}`, {
@@ -388,6 +426,36 @@ export default function App() {
         headers: getAuthHeaders()
       });
       if (res.ok) fetchData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users', { headers: getAuthHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setUsersList(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteUser = async (id: number) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este usuario?')) return;
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        fetchUsers();
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Error al eliminar usuario');
+      }
     } catch (err) {
       console.error(err);
     }
@@ -489,21 +557,51 @@ export default function App() {
     if (!newExpense.amount || !newExpense.category_id || !user) return;
 
     try {
-      await fetch('/api/expenses', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          ...newExpense,
-          amount: parseFloat(newExpense.amount),
-          category_id: parseInt(newExpense.category_id)
-        })
-      });
+      if (editingExpense) {
+        await fetch(`/api/expenses/${editingExpense.id}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            ...newExpense,
+            amount: parseFloat(newExpense.amount),
+            category_id: parseInt(newExpense.category_id)
+          })
+        });
+      } else {
+        await fetch('/api/expenses', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            ...newExpense,
+            amount: parseFloat(newExpense.amount),
+            category_id: parseInt(newExpense.category_id)
+          })
+        });
+      }
       setNewExpense({ amount: '', description: '', category_id: '', date: format(new Date(), 'yyyy-MM-dd') });
+      setEditingExpense(null);
       setShowExpenseForm(false);
       fetchData();
     } catch (error) {
-      console.error("Error adding expense:", error);
+      console.error("Error saving expense:", error);
     }
+  };
+
+  const openEditExpense = (expense: any) => {
+    setEditingExpense({
+      id: expense.id,
+      amount: expense.amount.toString(),
+      description: expense.description || '',
+      category_id: expense.category_id.toString(),
+      date: expense.date
+    });
+    setNewExpense({
+      amount: expense.amount.toString(),
+      description: expense.description || '',
+      category_id: expense.category_id.toString(),
+      date: expense.date
+    });
+    setShowExpenseForm(true);
   };
 
   const handleDeleteExpense = async (id: number) => {
@@ -551,6 +649,11 @@ export default function App() {
       if (res.ok) {
         setNewUser({ username: '', password: '' });
         setShowUserForm(false);
+        fetchUsers();
+        setShowAdminPanel(true);
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Error al registrar usuario');
       }
     } catch (err) {
       console.error(err);
@@ -662,73 +765,136 @@ export default function App() {
   if (!user) {
     return (
       <div className={cn(darkMode && "dark")}>
-        <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center p-4 transition-colors duration-300">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white dark:bg-stone-900 w-full max-w-md p-8 rounded-[2.5rem] border border-stone-200/60 dark:border-stone-800 shadow-2xl"
-          >
-            <div className="flex flex-col items-center mb-8">
-              <div className="p-4 bg-emerald-600 rounded-2xl text-white mb-4 shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20">
-                <Wallet size={32} />
-              </div>
-              <h1 className="text-3xl font-black tracking-tight text-stone-900 dark:text-stone-100">Cartera</h1>
-              <p className="text-stone-400 dark:text-stone-500 text-sm mt-2">Gestiona tus finanzas con inteligencia</p>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Usuario</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-                  <input 
-                    type="text"
-                    required
-                    value={loginData.username}
-                    onChange={e => setLoginData({...loginData, username: e.target.value})}
-                    placeholder="Tu nombre de usuario"
-                    className="w-full bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-2xl py-4 pl-12 pr-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-                  />
+        <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex transition-colors duration-300">
+          {/* Left Side - Form */}
+          <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-16 lg:px-24 xl:px-32 relative z-10">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              className="w-full max-w-md mx-auto"
+            >
+              <div className="flex items-center gap-3 mb-12">
+                <div className="p-3 bg-emerald-600 rounded-2xl text-white shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20">
+                  <Wallet size={24} />
                 </div>
+                <span className="text-xl font-black tracking-tight text-stone-900 dark:text-stone-100">Cartera</span>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Contraseña</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-                  <input 
-                    type="password"
-                    required
-                    value={loginData.password}
-                    onChange={e => setLoginData({...loginData, password: e.target.value})}
-                    placeholder="••••••••"
-                    className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 pl-12 pr-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
-                  />
+              <div className="mb-10">
+                <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-stone-900 dark:text-stone-100 mb-4 leading-tight">
+                  Bienvenido de <br />nuevo.
+                </h1>
+                <p className="text-stone-500 dark:text-stone-400 text-lg">
+                  Gestiona tus finanzas con inteligencia y toma el control de tu futuro.
+                </p>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Usuario</label>
+                  <div className="relative group">
+                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-emerald-500 transition-colors" size={20} />
+                    <input 
+                      type="text"
+                      required
+                      value={loginData.username}
+                      onChange={e => setLoginData({...loginData, username: e.target.value})}
+                      placeholder="Tu nombre de usuario"
+                      className="w-full bg-white dark:bg-stone-900 border-2 border-stone-100 dark:border-stone-800 rounded-2xl py-4 pl-12 pr-4 text-stone-900 dark:text-stone-100 focus:ring-0 focus:border-emerald-500 transition-all shadow-sm"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {authError && (
-                <motion.p 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="text-red-500 text-xs font-bold text-center"
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Contraseña</label>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-emerald-500 transition-colors" size={20} />
+                    <input 
+                      type="password"
+                      required
+                      value={loginData.password}
+                      onChange={e => setLoginData({...loginData, password: e.target.value})}
+                      placeholder="••••••••"
+                      className="w-full bg-white dark:bg-stone-900 border-2 border-stone-100 dark:border-stone-800 rounded-2xl py-4 pl-12 pr-4 text-stone-900 dark:text-stone-100 focus:ring-0 focus:border-emerald-500 transition-all shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                {authError && (
+                  <motion.p 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-red-500 text-sm font-bold bg-red-50 dark:bg-red-950/30 p-4 rounded-2xl border border-red-100 dark:border-red-900/50"
+                  >
+                    {authError}
+                  </motion.p>
+                )}
+
+                <button 
+                  type="submit"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-xl shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-[0.98] hover:-translate-y-1 mt-8 flex items-center justify-center gap-2 group"
                 >
-                  {authError}
-                </motion.p>
-              )}
+                  Iniciar Sesión
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              </form>
+            </motion.div>
+          </div>
 
-              <button 
-                type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95 mt-4"
-              >
-                Iniciar Sesión
-              </button>
-            </form>
-          </motion.div>
-          
+          {/* Right Side - Visual */}
+          <div className="hidden lg:flex w-1/2 bg-stone-100 dark:bg-stone-900 relative overflow-hidden items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent dark:from-emerald-500/5" />
+            
+            {/* Decorative elements */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative w-full max-w-lg aspect-square"
+            >
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-emerald-500/20 dark:bg-emerald-500/10 blur-[100px] rounded-full" />
+              
+              <div className="relative z-10 grid grid-cols-2 gap-6 p-8">
+                <div className="space-y-6 translate-y-12">
+                  <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800">
+                    <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center mb-4">
+                      <TrendingUp className="text-emerald-600 dark:text-emerald-400" size={20} />
+                    </div>
+                    <div className="text-sm text-stone-500 dark:text-stone-400 font-medium mb-1">Ingresos</div>
+                    <div className="text-2xl font-black text-stone-900 dark:text-stone-100">+2,450€</div>
+                  </div>
+                  <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800">
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mb-4">
+                      <Target className="text-blue-600 dark:text-blue-400" size={20} />
+                    </div>
+                    <div className="text-sm text-stone-500 dark:text-stone-400 font-medium mb-1">Ahorro</div>
+                    <div className="text-2xl font-black text-stone-900 dark:text-stone-100">850€</div>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800">
+                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mb-4">
+                      <TrendingDown className="text-red-600 dark:text-red-400" size={20} />
+                    </div>
+                    <div className="text-sm text-stone-500 dark:text-stone-400 font-medium mb-1">Gastos</div>
+                    <div className="text-2xl font-black text-stone-900 dark:text-stone-100">-1,240€</div>
+                  </div>
+                  <div className="bg-stone-900 dark:bg-stone-800 p-6 rounded-3xl shadow-2xl border border-stone-800 dark:border-stone-700 text-white">
+                    <div className="w-10 h-10 bg-stone-800 dark:bg-stone-700 rounded-full flex items-center justify-center mb-4">
+                      <PieChartIcon className="text-stone-300" size={20} />
+                    </div>
+                    <div className="text-sm text-stone-400 font-medium mb-1">Balance</div>
+                    <div className="text-2xl font-black">1,210€</div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="fixed bottom-6 right-6 p-4 bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 transition-all"
+            className="fixed bottom-6 right-6 p-4 bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 transition-all z-50 hover:scale-110 active:scale-95"
           >
             {darkMode ? <Sun size={24} /> : <Moon size={24} />}
           </button>
@@ -774,15 +940,22 @@ export default function App() {
             </button>
             {user?.username === 'gugliama' && (
               <button 
-                onClick={() => setShowUserForm(true)}
+                onClick={() => {
+                  fetchUsers();
+                  setShowAdminPanel(true);
+                }}
                 className="bg-stone-800 hover:bg-stone-900 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-all shadow-sm active:scale-95"
               >
                 <UserIcon size={20} />
-                <span className="hidden sm:inline">Nuevo Usuario</span>
+                <span className="hidden sm:inline">Admin</span>
               </button>
             )}
             <button 
-              onClick={() => setShowExpenseForm(true)}
+              onClick={() => {
+                setEditingExpense(null);
+                setNewExpense({ amount: '', description: '', category_id: '', date: format(new Date(), 'yyyy-MM-dd') });
+                setShowExpenseForm(true);
+              }}
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-all shadow-sm active:scale-95"
             >
               <Plus size={20} />
@@ -872,16 +1045,15 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <div ref={containerRef} className="w-full">
+        <div className="w-full">
           {mounted && (
-            <Responsive
+            <ResponsiveGridLayout
               className="layout"
               layouts={layouts}
               breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
               cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
               rowHeight={100}
               onLayoutChange={handleLayoutChange}
-              width={width}
               draggableHandle=".drag-handle"
               margin={[24, 24]}
               containerPadding={[0, 0]}
@@ -1316,12 +1488,22 @@ export default function App() {
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="font-black text-sm text-emerald-600 dark:text-emerald-400">-{expense.amount.toLocaleString()}€</div>
-                          <button 
-                            onClick={() => handleDeleteExpense(expense.id)}
-                            className="opacity-0 group-hover:opacity-100 p-2 text-stone-300 dark:text-stone-600 hover:text-red-500 dark:hover:text-red-400 transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all">
+                            <button 
+                              onClick={() => openEditExpense(expense)}
+                              className="p-2 text-stone-300 dark:text-stone-600 hover:text-emerald-500 dark:hover:text-emerald-400 transition-all"
+                              title="Editar gasto"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteExpense(expense.id)}
+                              className="p-2 text-stone-300 dark:text-stone-600 hover:text-red-500 dark:hover:text-red-400 transition-all"
+                              title="Eliminar gasto"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
                       </motion.div>
                     );
@@ -1339,7 +1521,7 @@ export default function App() {
                   </button>
                 )}
               </div>
-            </Responsive>
+            </ResponsiveGridLayout>
           )}
         </div>
       </main>
@@ -1362,7 +1544,7 @@ export default function App() {
               className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Registrar Gasto</h2>
+                <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">{editingExpense ? 'Editar Gasto' : 'Registrar Gasto'}</h2>
                 <div className="relative">
                   <input 
                     type="file" 
@@ -1403,7 +1585,19 @@ export default function App() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Categoría</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider">Categoría</label>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setShowExpenseForm(false);
+                        setShowCategoryForm(true);
+                      }}
+                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-500 dark:hover:text-emerald-400"
+                    >
+                      + Nueva Categoría
+                    </button>
+                  </div>
                   <select 
                     required
                     value={newExpense.category_id}
@@ -1438,7 +1632,7 @@ export default function App() {
                     type="submit"
                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95"
                   >
-                    Guardar
+                    {editingExpense ? 'Guardar Cambios' : 'Guardar'}
                   </button>
                 </div>
               </form>
@@ -1513,6 +1707,183 @@ export default function App() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Category Modal */}
+      <AnimatePresence>
+        {showCategoryForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowCategoryForm(false);
+                setShowExpenseForm(true);
+              }}
+              className="absolute inset-0 bg-stone-900/40 dark:bg-stone-950/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
+            >
+              <h2 className="text-2xl font-bold mb-6 text-stone-900 dark:text-stone-100">Nueva Categoría</h2>
+              <form onSubmit={handleAddCategory} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Nombre</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={newCategory.name}
+                    onChange={e => setNewCategory({...newCategory, name: e.target.value})}
+                    placeholder="Ej. Mascotas, Suscripciones..."
+                    className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-xl p-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-1">Color</label>
+                  <div className="flex items-center gap-4">
+                    <input 
+                      type="color" 
+                      required
+                      value={newCategory.color}
+                      onChange={e => setNewCategory({...newCategory, color: e.target.value})}
+                      className="w-12 h-12 rounded-xl cursor-pointer border-none p-0 bg-transparent"
+                    />
+                    <span className="text-sm text-stone-500 font-medium">{newCategory.color}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-2">Icono</label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {Object.keys(ICON_MAP).map(iconName => {
+                      const IconComponent = ICON_MAP[iconName];
+                      return (
+                        <button
+                          key={iconName}
+                          type="button"
+                          onClick={() => setNewCategory({...newCategory, icon: iconName})}
+                          className={cn(
+                            "p-3 rounded-xl flex items-center justify-center transition-all",
+                            newCategory.icon === iconName 
+                              ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-500" 
+                              : "bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700 border-2 border-transparent"
+                          )}
+                        >
+                          <IconComponent size={20} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setShowCategoryForm(false);
+                      setShowExpenseForm(true);
+                    }}
+                    className="flex-1 py-4 rounded-xl font-bold text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all"
+                  >
+                    Volver
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95"
+                  >
+                    Crear
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Admin Panel Modal */}
+      <AnimatePresence>
+        {showAdminPanel && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAdminPanel(false)}
+              className="absolute inset-0 bg-stone-900/40 dark:bg-stone-950/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-stone-900 w-full max-w-2xl rounded-3xl shadow-2xl p-8 max-h-[90vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                  <UserIcon size={24} className="text-emerald-600" />
+                  Gestión de Usuarios
+                </h2>
+                <button 
+                  onClick={() => {
+                    setShowAdminPanel(false);
+                    setShowUserForm(true);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm active:scale-95 text-sm font-bold"
+                >
+                  <Plus size={16} />
+                  Nuevo Usuario
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                <div className="space-y-2">
+                  {usersList.map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
+                          {u.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-bold text-stone-900 dark:text-stone-100">{u.username}</div>
+                          <div className="text-xs text-stone-500 dark:text-stone-400">ID: {u.id}</div>
+                        </div>
+                      </div>
+                      {u.username !== 'gugliama' && (
+                        <button 
+                          onClick={() => handleDeleteUser(u.id)}
+                          className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                      {u.username === 'gugliama' && (
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {usersList.length === 0 && (
+                    <div className="text-center py-8 text-stone-500">
+                      Cargando usuarios...
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="pt-6 mt-6 border-t border-stone-100 dark:border-stone-800">
+                <button 
+                  onClick={() => setShowAdminPanel(false)}
+                  className="w-full py-4 rounded-xl font-bold text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all"
+                >
+                  Cerrar
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

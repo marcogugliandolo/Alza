@@ -73,11 +73,15 @@ db.exec(`
 `);
 
 // Migration: Add user_id if it doesn't exist
-const tables = ['expenses', 'recurring_expenses', 'goals'];
+const tables = ['expenses', 'recurring_expenses', 'goals', 'categories'];
 tables.forEach(table => {
   const tableInfo = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
   if (!tableInfo.find(col => col.name === 'user_id')) {
-    db.exec(`ALTER TABLE ${table} ADD COLUMN user_id INTEGER DEFAULT 1`);
+    if (table === 'categories') {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN user_id INTEGER DEFAULT NULL`);
+    } else {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN user_id INTEGER DEFAULT 1`);
+    }
   }
 });
 
@@ -185,8 +189,23 @@ async function startServer() {
 
   // API Routes
   app.get("/api/categories", isAuthenticated, (req, res) => {
-    const categories = db.prepare("SELECT * FROM categories").all();
+    const categories = db.prepare("SELECT * FROM categories WHERE user_id IS NULL OR user_id = ?").all(req.session.userId);
     res.json(categories);
+  });
+
+  app.post("/api/categories", isAuthenticated, (req, res) => {
+    const { name, icon, color } = req.body;
+    try {
+      const result = db.prepare("INSERT INTO categories (name, icon, color, user_id) VALUES (?, ?, ?, ?)")
+        .run(name, icon, color, req.session.userId);
+      res.json({ id: result.lastInsertRowid });
+    } catch (error: any) {
+      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        res.status(400).json({ error: "Ya existe una categoría con ese nombre" });
+      } else {
+        res.status(500).json({ error: "Error al crear la categoría" });
+      }
+    }
   });
 
   app.get("/api/expenses", isAuthenticated, (req, res) => {
@@ -209,6 +228,13 @@ async function startServer() {
 
   app.delete("/api/expenses/:id", isAuthenticated, (req, res) => {
     db.prepare("DELETE FROM expenses WHERE id = ? AND user_id = ?").run(req.params.id, req.session.userId);
+    res.json({ success: true });
+  });
+
+  app.put("/api/expenses/:id", isAuthenticated, (req, res) => {
+    const { amount, description, category_id, date } = req.body;
+    db.prepare("UPDATE expenses SET amount = ?, description = ?, category_id = ?, date = ? WHERE id = ? AND user_id = ?")
+      .run(amount, description, category_id, date, req.params.id, req.session.userId);
     res.json({ success: true });
   });
 
@@ -292,6 +318,28 @@ async function startServer() {
     } catch (err) {
       res.status(400).json({ error: "No se pudo registrar el usuario" });
     }
+  });
+
+  app.get("/api/users", isAuthenticated, (req, res) => {
+    if (req.session.username !== 'gugliama') {
+      return res.status(403).json({ error: "No tienes permiso para ver usuarios" });
+    }
+    const users = db.prepare("SELECT id, username FROM users").all();
+    res.json(users);
+  });
+
+  app.delete("/api/users/:id", isAuthenticated, (req, res) => {
+    if (req.session.username !== 'gugliama') {
+      return res.status(403).json({ error: "No tienes permiso para eliminar usuarios" });
+    }
+    // Prevent deleting the admin user
+    const userToDelete = db.prepare("SELECT username FROM users WHERE id = ?").get(req.params.id) as any;
+    if (userToDelete && userToDelete.username === 'gugliama') {
+      return res.status(400).json({ error: "No puedes eliminar al administrador principal" });
+    }
+    
+    db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
   });
 
   // Vite middleware for development
