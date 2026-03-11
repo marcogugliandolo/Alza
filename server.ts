@@ -71,7 +71,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
+    password TEXT NOT NULL,
+    profile_image TEXT
   );
 `);
 
@@ -87,6 +88,15 @@ tables.forEach(table => {
     }
   }
 });
+
+// Migration: Add profile_image to users if it doesn't exist
+const userInfo = db.prepare(`PRAGMA table_info(users)`).all() as any[];
+if (!userInfo.find(col => col.name === 'profile_image')) {
+  db.exec(`ALTER TABLE users ADD COLUMN profile_image TEXT`);
+}
+if (!userInfo.find(col => col.name === 'account_mode')) {
+  db.exec(`ALTER TABLE users ADD COLUMN account_mode TEXT DEFAULT 'individual'`);
+}
 
 // Seed categories if empty
 const categoryCount = db.prepare("SELECT count(*) as count FROM categories").get() as { count: number };
@@ -143,15 +153,16 @@ async function startServer() {
   const isAuthenticated = (req: any, res: any, next: any) => {
     // Check for session OR custom header (for iframe compatibility)
     const userId = req.session.userId || req.headers['x-user-id'];
+    
     if (userId) {
-      // If header was used, ensure it's a valid user (basic check)
-      if (!req.session.userId && req.headers['x-user-id']) {
-        const user = db.prepare("SELECT id, username FROM users WHERE id = ?").get(req.headers['x-user-id']) as any;
+      // If we have a userId but no username in session, fetch it
+      if (!req.session.username) {
+        const user = db.prepare("SELECT id, username FROM users WHERE id = ?").get(userId) as any;
         if (user) {
           req.session.userId = user.id;
           req.session.username = user.username;
         } else {
-          return res.status(401).json({ error: "No autorizado" });
+          return res.status(401).json({ error: "Usuario no encontrado" });
         }
       }
       return next();
@@ -169,10 +180,35 @@ async function startServer() {
       console.log(`Login successful for user: ${username}`);
       req.session.userId = user.id;
       req.session.username = user.username;
-      res.json({ id: user.id, username: user.username });
+      res.json({ id: user.id, username: user.username, profile_image: user.profile_image });
     } else {
       console.log(`Login failed for user: ${username}`);
       res.status(401).json({ error: "Credenciales inválidas" });
+    }
+  });
+
+  app.post("/api/auth/register", (req, res) => {
+    const { username, password, account_mode } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: "Usuario y contraseña requeridos" });
+    }
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const mode = account_mode || 'individual';
+    try {
+      const result = db.prepare("INSERT INTO users (username, password, account_mode) VALUES (?, ?, ?)").run(username, hashedPassword, mode);
+      const userId = result.lastInsertRowid as number;
+      
+      // Auto-login after registration
+      req.session.userId = userId;
+      req.session.username = username;
+      
+      res.json({ id: userId, username, profile_image: null, account_mode: mode });
+    } catch (err: any) {
+      if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        res.status(400).json({ error: "El nombre de usuario ya existe" });
+      } else {
+        res.status(500).json({ error: "Error al registrar el usuario" });
+      }
     }
   });
 
@@ -184,10 +220,58 @@ async function startServer() {
 
   app.get("/api/auth/me", (req, res) => {
     if (req.session.userId) {
-      res.json({ id: req.session.userId, username: req.session.username });
+      const user = db.prepare("SELECT id, username, profile_image, account_mode FROM users WHERE id = ?").get(req.session.userId) as any;
+      if (user) {
+        res.json(user);
+      } else {
+        res.status(404).json({ error: "Usuario no encontrado" });
+      }
     } else {
       res.status(401).json({ error: "No autenticado" });
     }
+  });
+
+  app.patch("/api/auth/profile", isAuthenticated, (req, res) => {
+    const { username, profile_image } = req.body;
+    const userId = req.session.userId;
+
+    try {
+      if (username) {
+        db.prepare("UPDATE users SET username = ? WHERE id = ?").run(username, userId);
+        req.session.username = username;
+      }
+      if (profile_image !== undefined) {
+        db.prepare("UPDATE users SET profile_image = ? WHERE id = ?").run(profile_image, userId);
+      }
+      
+      const updatedUser = db.prepare("SELECT id, username, profile_image FROM users WHERE id = ?").get(userId) as any;
+      res.json(updatedUser);
+    } catch (err: any) {
+      if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        res.status(400).json({ error: "El nombre de usuario ya existe" });
+      } else {
+        res.status(500).json({ error: "Error al actualizar el perfil" });
+      }
+    }
+  });
+
+  app.patch("/api/auth/password", isAuthenticated, (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.session.userId;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ error: "Contraseña actual y nueva requeridas" });
+    }
+
+    const user = db.prepare("SELECT password FROM users WHERE id = ?").get(userId) as any;
+    if (!user || !bcrypt.compareSync(oldPassword, user.password)) {
+      return res.status(401).json({ error: "La contraseña actual es incorrecta" });
+    }
+
+    const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
+    db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashedNewPassword, userId);
+    
+    res.json({ success: true });
   });
 
   // Google OAuth Routes
@@ -301,8 +385,9 @@ async function startServer() {
         // Create user with a random password since they use Google
         const randomPassword = Math.random().toString(36).slice(-8);
         const hashedPassword = bcrypt.hashSync(randomPassword, 10);
-        const result = db.prepare("INSERT INTO users (username, password) VALUES (?, ?)").run(userData.email, hashedPassword);
-        user = { id: result.lastInsertRowid, username: userData.email };
+        const profileImage = userData.picture || null;
+        const result = db.prepare("INSERT INTO users (username, password, profile_image) VALUES (?, ?, ?)").run(userData.email, hashedPassword, profileImage);
+        user = { id: result.lastInsertRowid, username: userData.email, profile_image: profileImage };
       }
 
       // Set session
@@ -452,7 +537,7 @@ async function startServer() {
   });
 
   app.post("/api/users", isAuthenticated, (req, res) => {
-    if (req.session.username !== 'gugliama') {
+    if (req.session.username !== 'gugliama' && req.session.username !== 'marcogugliandolo94@gmail.com') {
       return res.status(403).json({ error: "No tienes permiso para registrar usuarios" });
     }
     const { username, password } = req.body;
@@ -466,7 +551,7 @@ async function startServer() {
   });
 
   app.get("/api/users", isAuthenticated, (req, res) => {
-    if (req.session.username !== 'gugliama') {
+    if (req.session.username !== 'gugliama' && req.session.username !== 'marcogugliandolo94@gmail.com') {
       return res.status(403).json({ error: "No tienes permiso para ver usuarios" });
     }
     const users = db.prepare("SELECT id, username FROM users").all();
@@ -474,17 +559,49 @@ async function startServer() {
   });
 
   app.delete("/api/users/:id", isAuthenticated, (req, res) => {
-    if (req.session.username !== 'gugliama') {
+    const currentUsername = req.session.username?.trim();
+    console.log(`DELETE /api/users/${req.params.id} called by user: ${currentUsername} (ID: ${req.session.userId})`);
+    
+    if (currentUsername !== 'gugliama' && currentUsername !== 'marcogugliandolo94@gmail.com') {
+      console.log(`Intento de eliminación no autorizado por: ${currentUsername}`);
       return res.status(403).json({ error: "No tienes permiso para eliminar usuarios" });
     }
-    // Prevent deleting the admin user
-    const userToDelete = db.prepare("SELECT username FROM users WHERE id = ?").get(req.params.id) as any;
-    if (userToDelete && userToDelete.username === 'gugliama') {
-      return res.status(400).json({ error: "No puedes eliminar al administrador principal" });
+    
+    const userIdToDelete = parseInt(req.params.id, 10);
+    
+    if (isNaN(userIdToDelete)) {
+      return res.status(400).json({ error: "ID de usuario inválido" });
     }
     
-    db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
-    res.json({ success: true });
+    // Prevent deleting the admin user
+    const userToDelete = db.prepare("SELECT username FROM users WHERE id = ?").get(userIdToDelete) as any;
+    if (!userToDelete) {
+      console.log(`Usuario a eliminar no encontrado: ${userIdToDelete}`);
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+    
+    const targetUsername = userToDelete.username?.trim();
+    if (targetUsername === 'gugliama' || targetUsername === 'marcogugliandolo94@gmail.com') {
+      console.log(`Intento de eliminar administrador: ${targetUsername}`);
+      return res.status(400).json({ error: "No puedes eliminar a un administrador" });
+    }
+    
+    try {
+      const deleteTransaction = db.transaction(() => {
+        db.prepare("DELETE FROM expenses WHERE user_id = ?").run(userIdToDelete);
+        db.prepare("DELETE FROM recurring_expenses WHERE user_id = ?").run(userIdToDelete);
+        db.prepare("DELETE FROM goals WHERE user_id = ?").run(userIdToDelete);
+        db.prepare("DELETE FROM categories WHERE user_id = ?").run(userIdToDelete);
+        db.prepare("DELETE FROM users WHERE id = ?").run(userIdToDelete);
+      });
+      
+      deleteTransaction();
+      console.log(`Usuario eliminado exitosamente: ${userIdToDelete}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Error al eliminar el usuario y sus datos: " + (error as Error).message });
+    }
   });
 
   // Vite middleware for development

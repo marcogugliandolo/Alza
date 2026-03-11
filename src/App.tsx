@@ -23,6 +23,8 @@ import {
   LogOut,
   Lock,
   User as UserIcon,
+  Users,
+  Heart,
   Search,
   Download,
   Filter,
@@ -133,12 +135,18 @@ const DEFAULT_LAYOUTS = {
 };
 
 export default function App() {
-  const [user, setUser] = useState<{ id: number, username: string } | null>(() => {
+  const [user, setUser] = useState<{ id: number, username: string, profile_image?: string, account_mode?: string } | null>(() => {
     const saved = localStorage.getItem('user');
     return saved ? JSON.parse(saved) : null;
   });
   const [authLoading, setAuthLoading] = useState(true);
-  const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileData, setProfileData] = useState({ username: '', profile_image: '' });
+  const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [loginData, setLoginData] = useState({ username: '', password: '', account_mode: 'individual' });
   const [authError, setAuthError] = useState('');
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -358,6 +366,34 @@ export default function App() {
     }
   };
 
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    const trimmedUsername = loginData.username.trim();
+    if (!trimmedUsername || !loginData.password) {
+      setAuthError('Usuario y contraseña requeridos');
+      return;
+    }
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...loginData, username: trimmedUsername })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('user', JSON.stringify(data));
+        setUser(data);
+      } else {
+        const data = await res.json();
+        setAuthError(data.error || 'Error al registrarse');
+      }
+    } catch (error) {
+      console.error("Registration request error:", error);
+      setAuthError('Error de conexión');
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { 
@@ -375,6 +411,73 @@ export default function App() {
       setUser(null);
       localStorage.removeItem('user');
     }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(profileData)
+      });
+      if (res.ok) {
+        const updatedUser = await res.json();
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setShowProfileModal(false);
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Error al actualizar el perfil');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess(false);
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('Las nuevas contraseñas no coinciden');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/password', {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          oldPassword: passwordData.oldPassword,
+          newPassword: passwordData.newPassword
+        })
+      });
+
+      if (res.ok) {
+        setPasswordSuccess(true);
+        setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => setPasswordSuccess(false), 3000);
+      } else {
+        const error = await res.json();
+        setPasswordError(error.error || 'Error al cambiar la contraseña');
+      }
+    } catch (err) {
+      console.error(err);
+      setPasswordError('Error de conexión');
+    }
+  };
+
+  const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileData(prev => ({ ...prev, profile_image: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const fetchData = async () => {
@@ -828,14 +931,16 @@ export default function App() {
 
               <div className="mb-10">
                 <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-stone-900 dark:text-stone-100 mb-4 leading-tight">
-                  Bienvenido de <br />nuevo.
+                  {isRegistering ? 'Crea tu \ncuenta.' : 'Bienvenido de \nnuevo.'}
                 </h1>
                 <p className="text-stone-500 dark:text-stone-400 text-lg">
-                  Gestiona tus finanzas con inteligencia y toma el control de tu futuro.
+                  {isRegistering 
+                    ? 'Únete a miles de usuarios que ya controlan sus finanzas.' 
+                    : 'Gestiona tus finanzas con inteligencia y toma el control de tu futuro.'}
                 </p>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-6">
+              <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Usuario</label>
                   <div className="relative group">
@@ -866,6 +971,34 @@ export default function App() {
                   </div>
                 </div>
 
+                {isRegistering && (
+                  <div className="space-y-4">
+                    <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Modo de Uso</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { id: 'individual', label: 'Individual', icon: UserIcon },
+                        { id: 'familiar', label: 'Familiar', icon: Users },
+                        { id: 'amigos', label: 'Amigos', icon: Heart }
+                      ].map((mode) => (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() => setLoginData({...loginData, account_mode: mode.id})}
+                          className={cn(
+                            "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all gap-2",
+                            loginData.account_mode === mode.id 
+                              ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400" 
+                              : "border-stone-100 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-400 hover:border-stone-200 dark:hover:border-stone-700"
+                          )}
+                        >
+                          <mode.icon size={20} />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">{mode.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {authError && (
                   <motion.div 
                     initial={{ opacity: 0, y: -10 }}
@@ -880,9 +1013,22 @@ export default function App() {
                   type="submit"
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-xl shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-[0.98] hover:-translate-y-1 mt-8 flex items-center justify-center gap-2 group"
                 >
-                  Iniciar Sesión
+                  {isRegistering ? 'Registrarse' : 'Iniciar Sesión'}
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                 </button>
+
+                <div className="text-center mt-6">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setIsRegistering(!isRegistering);
+                      setAuthError('');
+                    }}
+                    className="text-stone-500 dark:text-stone-400 text-sm font-medium hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                  >
+                    {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate gratis'}
+                  </button>
+                </div>
               </form>
             </motion.div>
           </div>
@@ -977,13 +1123,29 @@ export default function App() {
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
             <button
+              onClick={() => {
+                setProfileData({ username: user?.username || '', profile_image: user?.profile_image || '' });
+                setShowProfileModal(true);
+              }}
+              className="flex items-center gap-2 p-1 pr-3 bg-stone-100 dark:bg-stone-800 rounded-full hover:bg-stone-200 dark:hover:bg-stone-700 transition-all"
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-stone-200 dark:bg-stone-700 flex items-center justify-center">
+                {user?.profile_image ? (
+                  <img src={user.profile_image} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <UserIcon size={16} className="text-stone-500" />
+                )}
+              </div>
+              <span className="text-sm font-bold hidden sm:inline">{user?.username}</span>
+            </button>
+            <button
               onClick={handleLogout}
               className="p-2 text-stone-500 dark:text-stone-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 dark:hover:text-red-400 rounded-xl transition-colors"
               aria-label="Cerrar sesión"
             >
               <LogOut size={20} />
             </button>
-            {user?.username === 'gugliama' && (
+            {(user?.username === 'gugliama' || user?.username === 'marcogugliandolo94@gmail.com') && (
               <button 
                 onClick={() => {
                   fetchUsers();
@@ -1571,6 +1733,142 @@ export default function App() {
         </div>
       </main>
 
+      {/* Profile Modal */}
+      <AnimatePresence>
+        {showProfileModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowProfileModal(false)}
+              className="absolute inset-0 bg-stone-900/40 dark:bg-stone-950/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Mi Perfil</h2>
+                <button onClick={() => setShowProfileModal(false)} className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar space-y-8">
+                <form onSubmit={handleUpdateProfile} className="space-y-6">
+                  <div className="flex flex-col items-center gap-4 mb-4">
+                    <div className="relative group">
+                      <div className="w-32 h-32 rounded-full overflow-hidden bg-stone-100 dark:bg-stone-800 border-4 border-white dark:border-stone-800 shadow-xl">
+                        {profileData.profile_image ? (
+                          <img src={profileData.profile_image} alt="Profile Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-stone-300 dark:text-stone-700">
+                            <UserIcon size={48} />
+                          </div>
+                        )}
+                      </div>
+                      <label className="absolute bottom-0 right-0 p-2 bg-emerald-600 text-white rounded-full shadow-lg cursor-pointer hover:bg-emerald-700 transition-all">
+                        <Camera size={18} />
+                        <input type="file" accept="image/*" onChange={handleProfileImageUpload} className="hidden" />
+                      </label>
+                    </div>
+                    <p className="text-xs text-stone-400 font-medium">Haz clic en la cámara para cambiar tu foto</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Nombre de Usuario</label>
+                    <input 
+                      type="text"
+                      required
+                      value={profileData.username}
+                      onChange={e => setProfileData({...profileData, username: e.target.value})}
+                      className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 px-6 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                    />
+                  </div>
+
+                  {user?.account_mode && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Modo de Cuenta</label>
+                      <div className="w-full bg-stone-50 dark:bg-stone-800 rounded-2xl py-4 px-6 text-stone-500 dark:text-stone-400 font-bold capitalize">
+                        {user.account_mode}
+                      </div>
+                    </div>
+                  )}
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-xl shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-[0.98]"
+                  >
+                    Guardar Perfil
+                  </button>
+                </form>
+
+                <div className="h-px bg-stone-100 dark:bg-stone-800" />
+
+                <form onSubmit={handleUpdatePassword} className="space-y-6 pb-4">
+                  <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">Cambiar Contraseña</h3>
+                  
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Contraseña Actual</label>
+                    <input 
+                      type="password"
+                      required
+                      value={passwordData.oldPassword}
+                      onChange={e => setPasswordData({...passwordData, oldPassword: e.target.value})}
+                      className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 px-6 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Nueva Contraseña</label>
+                    <input 
+                      type="password"
+                      required
+                      value={passwordData.newPassword}
+                      onChange={e => setPasswordData({...passwordData, newPassword: e.target.value})}
+                      className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 px-6 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Confirmar Nueva Contraseña</label>
+                    <input 
+                      type="password"
+                      required
+                      value={passwordData.confirmPassword}
+                      onChange={e => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                      className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 px-6 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                    />
+                  </div>
+
+                  {passwordError && (
+                    <div className="text-red-500 text-xs font-bold bg-red-50 dark:bg-red-950/30 p-3 rounded-xl border border-red-100 dark:border-red-900/50">
+                      {passwordError}
+                    </div>
+                  )}
+
+                  {passwordSuccess && (
+                    <div className="text-emerald-600 text-xs font-bold bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
+                      Contraseña actualizada correctamente
+                    </div>
+                  )}
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-stone-800 hover:bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-xl transition-all active:scale-[0.98]"
+                  >
+                    Actualizar Contraseña
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Expense Modal */}
       <AnimatePresence>
         {showExpenseForm && (
@@ -1886,36 +2184,41 @@ export default function App() {
               
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
                 <div className="space-y-2">
-                  {usersList.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
-                          {u.username.charAt(0).toUpperCase()}
+                  {usersList.length > 0 ? (
+                    usersList.map(u => (
+                      <div key={u.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800 hover:border-emerald-200 dark:hover:border-emerald-900/30 transition-all group">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
+                            {u.username.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-bold text-stone-900 dark:text-stone-100">{u.username}</div>
+                            <div className="text-xs text-stone-500 dark:text-stone-400">ID: {u.id}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-bold text-stone-900 dark:text-stone-100">{u.username}</div>
-                          <div className="text-xs text-stone-500 dark:text-stone-400">ID: {u.id}</div>
+                        <div className="flex items-center gap-2">
+                          {(u.username !== 'gugliama' && u.username !== 'marcogugliandolo94@gmail.com') ? (
+                            <button 
+                              onClick={() => handleDeleteUser(u.id)}
+                              className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                              title="Eliminar usuario"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full uppercase tracking-widest">
+                              Admin
+                            </span>
+                          )}
                         </div>
                       </div>
-                      {u.username !== 'gugliama' && (
-                        <button 
-                          onClick={() => handleDeleteUser(u.id)}
-                          className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all"
-                          title="Eliminar usuario"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      )}
-                      {u.username === 'gugliama' && (
-                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                  {usersList.length === 0 && (
-                    <div className="text-center py-8 text-stone-500">
-                      Cargando usuarios...
+                    ))
+                  ) : (
+                    <div className="text-center py-12 bg-stone-50 dark:bg-stone-800/30 rounded-3xl border-2 border-dashed border-stone-100 dark:border-stone-800">
+                      <div className="w-12 h-12 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-400">
+                        <UserIcon size={24} />
+                      </div>
+                      <p className="text-stone-500 dark:text-stone-400 font-medium">Cargando lista de usuarios...</p>
                     </div>
                   )}
                 </div>
