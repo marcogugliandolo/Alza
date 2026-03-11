@@ -1553,7 +1553,7 @@ export default function App() {
             </div>
             <button 
               onClick={() => setShowInviteModal(true)}
-              className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest hover:underline"
+              className="text-[10px] font-black bg-stone-900 text-white px-2 py-1 rounded uppercase tracking-widest hover:bg-stone-800 transition-all"
             >
               Código: {user.group.invite_code}
             </button>
@@ -2208,9 +2208,9 @@ export default function App() {
                   </p>
                 </div>
 
-                <div className="w-full bg-stone-50 dark:bg-stone-800 p-6 rounded-2xl border-2 border-dashed border-stone-200 dark:border-stone-700 relative group">
+                <div className="w-full bg-stone-900 p-6 rounded-2xl border-2 border-dashed border-stone-700 relative group">
                   <span className="text-xs font-bold text-stone-400 uppercase tracking-widest block mb-2">Código de Invitación</span>
-                  <div className="text-3xl font-black tracking-[0.2em] text-emerald-600 dark:text-emerald-400 font-mono">
+                  <div className="text-3xl font-black tracking-[0.2em] text-white font-mono">
                     {user.group.invite_code || 'GENERANDO...'}
                   </div>
                   <div className="flex items-center justify-center gap-4 mt-4">
