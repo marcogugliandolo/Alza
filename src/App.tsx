@@ -583,6 +583,34 @@ export default function App() {
     }
   };
 
+  const [memberToRemove, setMemberToRemove] = useState<any>(null);
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove) return;
+    
+    try {
+      const res = await fetch(`/api/groups/members/${memberToRemove.id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        // Refresh user data
+        const meRes = await fetch('/api/auth/me', { headers: getAuthHeaders() });
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          setUser(meData);
+          localStorage.setItem('user', JSON.stringify(meData));
+        }
+        setMemberToRemove(null);
+      } else {
+        const data = await res.json();
+        setAuthError(data.error || 'Error al eliminar al miembro');
+      }
+    } catch (error) {
+      console.error('Error de conexión');
+    }
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -2030,6 +2058,15 @@ export default function App() {
                             {member.role === 'admin' && (
                               <span className="text-[8px] font-black bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Admin</span>
                             )}
+                            {user.group.members.find((m: any) => m.id === user.id)?.role === 'admin' && member.id !== user.id && (
+                              <button 
+                                onClick={() => setMemberToRemove(member)}
+                                className="opacity-0 group-hover/member:opacity-100 p-1 text-stone-400 hover:text-red-500 transition-all"
+                                title="Eliminar miembro"
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -3062,6 +3099,49 @@ export default function App() {
                     {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
                   </button>
                 </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Remove Member Confirmation Modal */}
+      <AnimatePresence>
+        {memberToRemove && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMemberToRemove(null)}
+              className="absolute inset-0 bg-stone-900/60 dark:bg-stone-950/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-stone-900 w-full max-w-sm rounded-[2rem] shadow-2xl p-8 text-center"
+            >
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600 dark:text-red-400">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">¿Eliminar miembro?</h3>
+              <p className="text-stone-500 dark:text-stone-400 text-sm mb-8">
+                Estás a punto de eliminar a <span className="font-bold text-stone-900 dark:text-stone-100">{memberToRemove.username}</span> del grupo. Esta acción no se puede deshacer.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setMemberToRemove(null)}
+                  className="flex-1 py-3 rounded-xl font-bold text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleRemoveMember}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-red-200 dark:shadow-red-900/20 transition-all active:scale-95"
+                >
+                  Eliminar
+                </button>
               </div>
             </motion.div>
           </div>
