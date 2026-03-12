@@ -275,6 +275,7 @@ export default function App() {
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showExpenseListModal, setShowExpenseListModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
@@ -2467,8 +2468,17 @@ export default function App() {
                 <div className="flex flex-col gap-4 mb-6 pr-12">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100">Gastos</h3>
-                    <div className="p-1.5 bg-stone-50 dark:bg-stone-800 rounded-lg text-stone-400 dark:text-stone-500">
-                      <TrendingDown size={16} />
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setShowExpenseListModal(true)}
+                        className="p-1.5 bg-stone-50 dark:bg-stone-800 rounded-lg text-stone-400 dark:text-stone-500 hover:text-emerald-600 transition-colors"
+                        title="Ver todos los gastos"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <div className="p-1.5 bg-stone-50 dark:bg-stone-800 rounded-lg text-stone-400 dark:text-stone-500">
+                        <TrendingDown size={16} />
+                      </div>
                     </div>
                   </div>
 
@@ -2952,6 +2962,45 @@ export default function App() {
                     Actualizar Contraseña
                   </button>
                 </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Expense List Modal */}
+      <AnimatePresence>
+        {showExpenseListModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowExpenseListModal(false)}
+              className="absolute inset-0 bg-stone-900/40 dark:bg-stone-950/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white dark:bg-stone-900 w-full max-w-2xl rounded-3xl shadow-2xl p-8 max-h-[80vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Todos los Gastos</h2>
+                <button 
+                  onClick={() => setShowExpenseListModal(false)}
+                  className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {expenses.map(expense => (
+                  <div key={expense.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800 rounded-2xl">
+                    <div className="font-bold text-sm text-stone-800 dark:text-stone-200">{expense.description || expense.category_name}</div>
+                    <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{expense.amount.toFixed(2)} €</div>
+                  </div>
+                ))}
               </div>
             </motion.div>
           </div>
