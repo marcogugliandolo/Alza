@@ -427,15 +427,11 @@ async function startServer() {
   });
 
   app.patch("/api/auth/profile", isAuthenticated, (req, res) => {
-    const { username, profile_image, theme_color, account_mode, ui_settings } = req.body;
+    const { profile_image, theme_color, account_mode, ui_settings } = req.body;
     const userId = req.session.userId;
 
     try {
       db.transaction(() => {
-        if (username) {
-          db.prepare("UPDATE users SET username = ? WHERE id = ?").run(username, userId);
-          req.session.username = username;
-        }
         if (profile_image !== undefined) {
           db.prepare("UPDATE users SET profile_image = ? WHERE id = ?").run(profile_image, userId);
         }
@@ -453,11 +449,7 @@ async function startServer() {
       
       res.json(getFullUserData(userId));
     } catch (err: any) {
-      if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        res.status(400).json({ error: "El nombre de usuario ya existe" });
-      } else {
-        res.status(500).json({ error: "Error al actualizar el perfil" });
-      }
+      res.status(500).json({ error: "Error al actualizar el perfil" });
     }
   });
 

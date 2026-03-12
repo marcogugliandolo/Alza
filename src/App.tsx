@@ -2779,11 +2779,12 @@ export default function App() {
                     <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Nombre de Usuario</label>
                     <input 
                       type="text"
-                      required
+                      readOnly
+                      disabled
                       value={profileData.username}
-                      onChange={e => setProfileData({...profileData, username: e.target.value})}
-                      className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-2xl py-4 px-6 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
+                      className="w-full bg-stone-100 dark:bg-stone-900 border-none rounded-2xl py-4 px-6 text-stone-500 dark:text-stone-500 cursor-not-allowed transition-all"
                     />
+                    <p className="text-[10px] text-stone-400 dark:text-stone-600 ml-1">El nombre de usuario no se puede cambiar una vez creado.</p>
                   </div>
 
                   <div className="space-y-4">
