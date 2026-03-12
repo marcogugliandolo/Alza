@@ -68,7 +68,13 @@ const getBrandLogo = (name: string): string | null => {
   const lowerName = name.toLowerCase().trim();
   const normalized = lowerName.replace(/[^a-z0-9]/g, '');
   
+  // Si parece un dominio, usarlo directamente
+  if (lowerName.includes('.') && !lowerName.includes(' ') && lowerName.length > 3) {
+    return `https://unavatar.io/${lowerName}`;
+  }
+
   const domains: Record<string, string> = {
+    // Streaming & Tech
     netflix: 'netflix.com', spotify: 'spotify.com', amazon: 'amazon.com', primevideo: 'primevideo.com',
     hbo: 'hbomax.com', hbomax: 'hbomax.com', max: 'max.com', disney: 'disneyplus.com',
     disneyplus: 'disneyplus.com', apple: 'apple.com', appletv: 'apple.com', applemusic: 'apple.com',
@@ -85,44 +91,50 @@ const getBrandLogo = (name: string): string | null => {
     pedidosya: 'pedidosya.com', glovo: 'glovoapp.com', justeat: 'justeat.com', deliveroo: 'deliveroo.co.uk',
     starbucks: 'starbucks.com', mcdonalds: 'mcdonalds.com', burgerking: 'burgerking.com', kfc: 'kfc.com',
     subway: 'subway.com', dominos: 'dominos.com', pizzahut: 'pizzahut.com', telepizza: 'telepizza.es',
+    
+    // Spanish Banks & FinTech
+    bbva: 'bbva.com', santander: 'santander.com', caixabank: 'caixabank.com', sabadell: 'bancosabadell.com',
+    ing: 'ing.es', bankinter: 'bankinter.com', abanca: 'abanca.com', unicaja: 'unicaja.es',
+    revolut: 'revolut.com', n26: 'n26.com', paypal: 'paypal.com', klarna: 'klarna.com',
+    mercadopago: 'mercadopago.com', bizum: 'bizum.es', openbank: 'openbank.es',
+    
+    // Spanish Utilities & Telco
     vodafone: 'vodafone.com', orange: 'orange.com', movistar: 'movistar.es', o2: 'o2.co.uk',
     yoigo: 'yoigo.com', pepephone: 'pepephone.com', simyo: 'simyo.es', lowi: 'lowi.es',
-    digi: 'digimobil.es', revolut: 'revolut.com', n26: 'n26.com', paypal: 'paypal.com',
-    klarna: 'klarna.com', mercadolibre: 'mercadolibre.com', mercadopago: 'mercadopago.com',
-    aliexpress: 'aliexpress.com', shein: 'shein.com', zara: 'zara.com', nike: 'nike.com',
-    adidas: 'adidas.com', puma: 'puma.com', ikea: 'ikea.com', decathlon: 'decathlon.com',
-    mediamarkt: 'mediamarkt.es', pccomponentes: 'pccomponentes.com', game: 'game.es', fnac: 'fnac.es',
-    elcorteingles: 'elcorteingles.es', carrefour: 'carrefour.es', alcampo: 'alcampo.es',
-    mercadona: 'mercadona.es', lidl: 'lidl.es', aldi: 'aldi.es', dia: 'dia.es', consum: 'consum.es',
-    eroski: 'eroski.es', walmart: 'walmart.com', target: 'target.com', bestbuy: 'bestbuy.com',
-    homedepot: 'homedepot.com', securitas: 'securitasdirect.es', prosegur: 'prosegur.es',
-    mapfre: 'mapfre.es', allianz: 'allianz.es', axa: 'axa.es', sanitas: 'sanitas.es',
-    adeslas: 'adeslas.es', asisa: 'asisa.es', dkv: 'dkvseguros.com', stripe: 'stripe.com',
-    shopify: 'shopify.com', mailchimp: 'mailchimp.com', salesforce: 'salesforce.com',
-    icloud: 'icloud.com', outlook: 'outlook.com', gmail: 'gmail.com', midjourney: 'midjourney.com',
-    anthropic: 'anthropic.com', claude: 'anthropic.com', perplexity: 'perplexity.ai', dazn: 'dazn.com',
-    filmin: 'filmin.es', sky: 'sky.com', skyshowtime: 'skyshowtime.com', paramount: 'paramountplus.com',
-    peacock: 'peacocktv.com', vimeo: 'vimeo.com', soundcloud: 'soundcloud.com', tidal: 'tidal.com',
-    deezer: 'deezer.com', audible: 'audible.com', kindle: 'amazon.com', storytel: 'storytel.com',
-    blinkist: 'blinkist.com', medium: 'medium.com', nytimes: 'nytimes.com', wsj: 'wsj.com',
-    washingtonpost: 'washingtonpost.com', steam: 'steampowered.com', epic: 'epicgames.com',
-    battlenet: 'blizzard.com', blizzard: 'blizzard.com', origin: 'ea.com', ubisoft: 'ubisoft.com',
-    rockstar: 'rockstargames.com', kick: 'kick.com', mixer: 'mixer.com',
-    teams: 'microsoft.com', skype: 'skype.com', telegram: 'telegram.org',
-    whatsapp: 'whatsapp.com', signal: 'signal.org', line: 'line.me', viber: 'viber.com',
-    wechat: 'wechat.com', tiktok: 'tiktok.com', instagram: 'instagram.com', facebook: 'facebook.com',
-    twitter: 'twitter.com', x: 'twitter.com', linkedin: 'linkedin.com', pinterest: 'pinterest.com',
-    reddit: 'reddit.com', tumblr: 'tumblr.com', snapchat: 'snapchat.com', beal: 'bereal.com',
-    bereal: 'bereal.com', twitch: 'twitch.tv', zoom: 'zoom.us'
+    digi: 'digimobil.es', jazztel: 'jazztel.com', masmovil: 'masmovil.com',
+    iberdrola: 'iberdrola.es', endesa: 'endesa.com', naturgy: 'naturgy.es', repsol: 'repsol.com',
+    cepsa: 'cepsa.com', totalenergies: 'totalenergies.es',
+    
+    // Retail & Fashion
+    mercadona: 'mercadona.es', lidl: 'lidl.es', aldi: 'aldi.es', carrefour: 'carrefour.es',
+    alcampo: 'alcampo.es', eroski: 'eroski.es', consum: 'consum.es', dia: 'dia.es',
+    zara: 'zara.com', nike: 'nike.com', adidas: 'adidas.com', puma: 'puma.com',
+    ikea: 'ikea.com', decathlon: 'decathlon.com', mediamarkt: 'mediamarkt.es',
+    pccomponentes: 'pccomponentes.com', aliexpress: 'aliexpress.com',
+    shein: 'shein.com', elcorteingles: 'elcorteingles.es', fnac: 'fnac.es',
+    
+    // Travel & Insurance
+    renfe: 'renfe.com', alsa: 'alsa.es', vueling: 'vueling.com', iberia: 'iberia.com',
+    aireuropa: 'aireuropa.com', ryanair: 'ryanair.com', booking: 'booking.com',
+    airbnb: 'airbnb.com', mapfre: 'mapfre.es', allianz: 'allianz.es', axa: 'axa.es',
+    sanitas: 'sanitas.es', adeslas: 'adeslas.es', asisa: 'asisa.es', dkv: 'dkvseguros.com',
+    mutua: 'mutua.es',
+    
+    // Others
+    stripe: 'stripe.com', shopify: 'shopify.com', mailchimp: 'mailchimp.com',
+    icloud: 'icloud.com', outlook: 'outlook.com', gmail: 'gmail.com',
+    tiktok: 'tiktok.com', instagram: 'instagram.com', facebook: 'facebook.com',
+    twitter: 'twitter.com', x: 'twitter.com', linkedin: 'linkedin.com',
+    twitch: 'twitch.tv', zoom: 'zoom.us'
   };
 
   // Try exact match first
-  if (domains[normalized]) return `https://logo.clearbit.com/${domains[normalized]}`;
+  if (domains[normalized]) return `https://unavatar.io/${domains[normalized]}`;
 
   // Try partial match
   for (const [key, domain] of Object.entries(domains)) {
     if (lowerName.includes(key)) {
-      return `https://logo.clearbit.com/${domain}`;
+      return `https://unavatar.io/${domain}`;
     }
   }
   return null;
@@ -2224,10 +2236,10 @@ export default function App() {
                           <div className="p-2.5 rounded-xl text-white relative flex items-center justify-center overflow-hidden" style={{ backgroundColor: brandLogo ? '#ffffff' : (rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color) }}>
                             {brandLogo && (
                               <img 
-                                src={brandLogo} 
+                                src={`${brandLogo}?fallback=false`} 
                                 alt={rec.description} 
                                 referrerPolicy="no-referrer"
-                                className="absolute inset-0 w-full h-full object-contain p-1.5" 
+                                className="absolute inset-0 w-full h-full object-contain p-1" 
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                   if (e.currentTarget.parentElement) {
@@ -2362,10 +2374,10 @@ export default function App() {
                           >
                             {brandLogo && (
                               <img 
-                                src={brandLogo} 
+                                src={`${brandLogo}?fallback=false`} 
                                 alt={expense.description || expense.category_name} 
                                 referrerPolicy="no-referrer"
-                                className="absolute inset-0 w-full h-full object-contain p-1.5" 
+                                className="absolute inset-0 w-full h-full object-contain p-1" 
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                   if (e.currentTarget.parentElement) {
