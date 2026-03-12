@@ -1958,12 +1958,6 @@ export default function App() {
                 {user.group.name} • {user.group.members?.length || 0} miembros
               </span>
             </div>
-            <button 
-              onClick={() => setShowInviteModal(true)}
-              className="text-[10px] font-black bg-stone-900 text-white px-2 py-1 rounded uppercase tracking-widest hover:bg-stone-800 transition-all"
-            >
-              Código: {user.group.invite_code}
-            </button>
           </div>
         </div>
       )}
@@ -2478,42 +2472,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {user?.account_mode !== 'individual' && user?.group && (
-                    <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Miembros del Grupo</h4>
-                        <span className="text-[10px] font-bold text-stone-400">{user.group.members?.length || 0}</span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2">
-                        {user.group.members?.map((member: any) => (
-                          <div key={member.id} className="flex items-center gap-2 group/member">
-                            <div className="w-6 h-6 rounded-full bg-stone-200 dark:bg-stone-800 overflow-hidden ring-2 ring-white dark:ring-stone-900 shadow-sm">
-                              {member.profile_image ? (
-                                <img src={member.profile_image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-stone-400">
-                                  <UserIcon size={10} />
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-xs font-bold text-stone-700 dark:text-stone-300 truncate flex-1">{member.username}</span>
-                            {member.role === 'admin' && (
-                              <span className="text-[8px] font-black bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-full uppercase tracking-tighter">Admin</span>
-                            )}
-                            {user.group.members.find((m: any) => m.id === user.id)?.role === 'admin' && member.id !== user.id && (
-                              <button 
-                                onClick={() => setMemberToRemove(member)}
-                                className="opacity-0 group-hover/member:opacity-100 p-1 text-stone-400 hover:text-red-500 transition-all"
-                                title="Eliminar miembro"
-                              >
-                                <X size={12} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   
                   <div className="flex gap-2">
                     <select 
@@ -2805,6 +2763,74 @@ export default function App() {
                         </button>
                       ))}
                     </div>
+
+                    {profileData.account_mode !== 'individual' && user?.account_mode === profileData.account_mode && user?.group && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="bg-stone-50 dark:bg-stone-800/50 rounded-2xl p-4 border border-stone-100 dark:border-stone-800"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Miembros actuales</h4>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setShowInviteModal(true);
+                              setShowProfileModal(false);
+                            }}
+                            className="text-[10px] font-bold text-emerald-600 hover:underline flex items-center gap-1"
+                          >
+                            <Plus size={10} />
+                            Invitar más
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {user.group.members?.map((member: any) => (
+                            <div key={member.id} className="flex items-center justify-between group/modal-member">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
+                                  {member.profile_image ? (
+                                    <img src={member.profile_image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-stone-400">
+                                      <UserIcon size={14} />
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-stone-900 dark:text-stone-100">{member.username}</p>
+                                  {member.role === 'admin' && (
+                                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-tighter">Administrador</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                {member.id === user.id ? (
+                                  <button 
+                                    type="button"
+                                    onClick={() => setMemberToRemove({...member, isLeaving: true})}
+                                    className="px-3 py-1 text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-100 dark:border-red-900/30 hover:bg-red-100 transition-all"
+                                  >
+                                    Salir
+                                  </button>
+                                ) : (
+                                  user.group.members.find(m => m.id === user.id)?.role === 'admin' && (
+                                    <button 
+                                      type="button"
+                                      onClick={() => setMemberToRemove(member)}
+                                      className="p-2 text-stone-400 hover:text-red-500 transition-all"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
 
                   <div className="space-y-4">
@@ -2833,40 +2859,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {user?.account_mode && (
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Modo de Cuenta</label>
-                      <div className={cn(
-                        "w-full rounded-2xl py-4 px-6 font-bold capitalize flex items-center justify-between",
-                        user.account_mode === 'familiar' ? "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400" :
-                        user.account_mode === 'amigos' ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400" :
-                        "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400"
-                      )}>
-                        <div className="flex items-center gap-3">
-                          {user.account_mode === 'familiar' ? <Users size={20} /> :
-                           user.account_mode === 'amigos' ? <Heart size={20} /> :
-                           <UserIcon size={20} />}
-                          {user.account_mode}
-                        </div>
-                        {user.account_mode !== 'individual' && (
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              setShowInviteModal(true);
-                              setShowProfileModal(false);
-                            }}
-                            className={cn(
-                              "text-xs px-3 py-1.5 rounded-full transition-colors",
-                              user.account_mode === 'familiar' ? "bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800/50" :
-                              "bg-rose-100 dark:bg-rose-900/50 hover:bg-rose-200 dark:hover:bg-rose-800/50"
-                            )}
-                          >
-                            Invitar
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
                   <button 
                     type="submit"
@@ -3660,11 +3652,16 @@ export default function App() {
               className="relative bg-white dark:bg-stone-900 w-full max-w-sm rounded-[2rem] shadow-2xl p-8 text-center"
             >
               <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600 dark:text-red-400">
-                <Trash2 size={32} />
+                <LogOut size={32} />
               </div>
-              <h3 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">¿Eliminar miembro?</h3>
+              <h3 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">
+                {memberToRemove.isLeaving ? '¿Salir del grupo?' : '¿Eliminar miembro?'}
+              </h3>
               <p className="text-stone-500 dark:text-stone-400 text-sm mb-8">
-                Estás a punto de eliminar a <span className="font-bold text-stone-900 dark:text-stone-100">{memberToRemove.username}</span> del grupo. Esta acción no se puede deshacer.
+                {memberToRemove.isLeaving 
+                  ? '¿Estás seguro de que quieres salir del grupo? Volverás al modo individual.'
+                  : <>Estás a punto de eliminar a <span className="font-bold text-stone-900 dark:text-stone-100">{memberToRemove.username}</span> del grupo. Esta acción no se puede deshacer.</>
+                }
               </p>
               <div className="flex gap-3">
                 <button 
@@ -3677,7 +3674,7 @@ export default function App() {
                   onClick={handleRemoveMember}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-red-200 dark:shadow-red-900/20 transition-all active:scale-95"
                 >
-                  Eliminar
+                  {memberToRemove.isLeaving ? 'Salir' : 'Eliminar'}
                 </button>
               </div>
             </motion.div>

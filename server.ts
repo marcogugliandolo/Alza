@@ -393,34 +393,54 @@ async function startServer() {
   });
 
   app.delete("/api/groups/members/:memberId", isAuthenticated, (req, res) => {
-    const adminId = req.session.userId;
-    const memberId = parseInt(req.params.memberId);
+    const requesterId = req.session.userId;
+    const targetId = parseInt(req.params.memberId);
 
-    // Check if the requester is an admin of the group the member belongs to
-    const adminMembership = db.prepare("SELECT group_id, role FROM group_members WHERE user_id = ?").get(adminId) as any;
+    // Get requester's current group membership
+    const requesterMembership = db.prepare("SELECT group_id, role FROM group_members WHERE user_id = ?").get(requesterId) as any;
     
-    if (!adminMembership || adminMembership.role !== 'admin') {
-      return res.status(403).json({ error: "Solo el administrador puede eliminar miembros" });
+    if (!requesterMembership) {
+      return res.status(404).json({ error: "No perteneces a ningún grupo" });
     }
 
-    const memberMembership = db.prepare("SELECT group_id FROM group_members WHERE user_id = ? AND group_id = ?").get(memberId, adminMembership.group_id) as any;
+    const groupId = requesterMembership.group_id;
 
-    if (!memberMembership) {
+    // Case 1: User wants to leave the group
+    if (requesterId === targetId) {
+      try {
+        db.transaction(() => {
+          // Remove from group
+          db.prepare("DELETE FROM group_members WHERE user_id = ? AND group_id = ?").run(targetId, groupId);
+          // Reset user account mode to individual
+          db.prepare("UPDATE users SET account_mode = 'individual' WHERE id = ?").run(targetId);
+          
+          // If no members left, we could optionally delete the group, but let's keep it for now
+        })();
+        return res.json({ success: true, message: "Has salido del grupo correctamente" });
+      } catch (err) {
+        return res.status(500).json({ error: "Error al salir del grupo" });
+      }
+    }
+
+    // Case 2: Admin wants to remove another member
+    if (requesterMembership.role !== 'admin') {
+      return res.status(403).json({ error: "Solo el administrador puede eliminar a otros miembros" });
+    }
+
+    const targetMembership = db.prepare("SELECT group_id FROM group_members WHERE user_id = ? AND group_id = ?").get(targetId, groupId) as any;
+
+    if (!targetMembership) {
       return res.status(404).json({ error: "El usuario no pertenece a tu grupo" });
-    }
-
-    if (adminId.toString() === memberId.toString()) {
-      return res.status(400).json({ error: "No puedes eliminarte a ti mismo del grupo" });
     }
 
     try {
       db.transaction(() => {
         // Remove from group
-        db.prepare("DELETE FROM group_members WHERE user_id = ? AND group_id = ?").run(memberId, adminMembership.group_id);
+        db.prepare("DELETE FROM group_members WHERE user_id = ? AND group_id = ?").run(targetId, groupId);
         // Reset user account mode to individual
-        db.prepare("UPDATE users SET account_mode = 'individual' WHERE id = ?").run(memberId);
+        db.prepare("UPDATE users SET account_mode = 'individual' WHERE id = ?").run(targetId);
       })();
-      res.json({ success: true });
+      res.json({ success: true, message: "Miembro eliminado correctamente" });
     } catch (err) {
       res.status(500).json({ error: "Error al eliminar al miembro" });
     }
