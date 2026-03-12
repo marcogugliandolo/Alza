@@ -74,7 +74,8 @@ db.exec(`
     password TEXT NOT NULL,
     profile_image TEXT,
     account_mode TEXT DEFAULT 'individual',
-    theme_color TEXT DEFAULT 'default'
+    theme_color TEXT DEFAULT 'default',
+    ui_settings TEXT
   );
 
   CREATE TABLE IF NOT EXISTS groups (
@@ -122,6 +123,9 @@ if (!userInfo.find(col => col.name === 'account_mode')) {
 }
 if (!userInfo.find(col => col.name === 'theme_color')) {
   db.exec(`ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT 'default'`);
+}
+if (!userInfo.find(col => col.name === 'ui_settings')) {
+  db.exec(`ALTER TABLE users ADD COLUMN ui_settings TEXT`);
 }
 
 // Seed categories if empty
@@ -199,8 +203,16 @@ async function startServer() {
 
   // Helper to get full user data with group info
   const getFullUserData = (userId: number) => {
-    const user = db.prepare("SELECT id, username, profile_image, account_mode, theme_color FROM users WHERE id = ?").get(userId) as any;
-    if (user && user.account_mode !== 'individual') {
+    const user = db.prepare("SELECT id, username, profile_image, account_mode, theme_color, ui_settings FROM users WHERE id = ?").get(userId) as any;
+    if (user) {
+      if (user.ui_settings) {
+        try {
+          user.ui_settings = JSON.parse(user.ui_settings);
+        } catch (e) {
+          user.ui_settings = null;
+        }
+      }
+      if (user.account_mode !== 'individual') {
       let group = db.prepare(`
         SELECT g.* FROM groups g
         JOIN group_members gm ON g.id = gm.group_id
@@ -230,6 +242,7 @@ async function startServer() {
           WHERE gm.group_id = ?
         `).all(group.id);
       }
+    }
     }
     return user;
   };
@@ -414,7 +427,7 @@ async function startServer() {
   });
 
   app.patch("/api/auth/profile", isAuthenticated, (req, res) => {
-    const { username, profile_image, theme_color, account_mode } = req.body;
+    const { username, profile_image, theme_color, account_mode, ui_settings } = req.body;
     const userId = req.session.userId;
 
     try {
@@ -431,6 +444,10 @@ async function startServer() {
         }
         if (account_mode !== undefined) {
           db.prepare("UPDATE users SET account_mode = ? WHERE id = ?").run(account_mode, userId);
+        }
+        if (ui_settings !== undefined) {
+          const uiSettingsStr = typeof ui_settings === 'string' ? ui_settings : JSON.stringify(ui_settings);
+          db.prepare("UPDATE users SET ui_settings = ? WHERE id = ?").run(uiSettingsStr, userId);
         }
       })();
       

@@ -65,7 +65,7 @@ import { cn, type Category, type Expense, type Goal, type RecurringExpense } fro
 
 const getBrandLogo = (name: string): string | null => {
   if (!name) return null;
-  const lowerName = name.toLowerCase();
+  const lowerName = name.toLowerCase().trim();
   const normalized = lowerName.replace(/[^a-z0-9]/g, '');
   
   const domains: Record<string, string> = {
@@ -78,8 +78,8 @@ const getBrandLogo = (name: string): string | null => {
     microsoft: 'microsoft.com', google: 'google.com', googleone: 'google.com', chatgpt: 'openai.com',
     openai: 'openai.com', github: 'github.com', aws: 'aws.amazon.com', vercel: 'vercel.com',
     figma: 'figma.com', notion: 'notion.so', slack: 'slack.com', discord: 'discord.com',
-    canva: 'canva.com', dropbox: 'dropbox.com', zoom: 'zoom.us', crunchyroll: 'crunchyroll.com',
-    twitch: 'twitch.tv', patreon: 'patreon.com', onlyfans: 'onlyfans.com', tinder: 'tinder.com',
+    canva: 'canva.com', dropbox: 'dropbox.com', crunchyroll: 'crunchyroll.com',
+    patreon: 'patreon.com', onlyfans: 'onlyfans.com', tinder: 'tinder.com',
     bumble: 'bumble.com', duolingo: 'duolingo.com', strava: 'strava.com', uber: 'uber.com',
     ubereats: 'uber.com', cabify: 'cabify.com', didi: 'didiglobal.com', rappi: 'rappi.com',
     pedidosya: 'pedidosya.com', glovo: 'glovoapp.com', justeat: 'justeat.com', deliveroo: 'deliveroo.co.uk',
@@ -105,12 +105,23 @@ const getBrandLogo = (name: string): string | null => {
     peacock: 'peacocktv.com', vimeo: 'vimeo.com', soundcloud: 'soundcloud.com', tidal: 'tidal.com',
     deezer: 'deezer.com', audible: 'audible.com', kindle: 'amazon.com', storytel: 'storytel.com',
     blinkist: 'blinkist.com', medium: 'medium.com', nytimes: 'nytimes.com', wsj: 'wsj.com',
-    washingtonpost: 'washingtonpost.com'
+    washingtonpost: 'washingtonpost.com', steam: 'steampowered.com', epic: 'epicgames.com',
+    battlenet: 'blizzard.com', blizzard: 'blizzard.com', origin: 'ea.com', ubisoft: 'ubisoft.com',
+    rockstar: 'rockstargames.com', kick: 'kick.com', mixer: 'mixer.com',
+    teams: 'microsoft.com', skype: 'skype.com', telegram: 'telegram.org',
+    whatsapp: 'whatsapp.com', signal: 'signal.org', line: 'line.me', viber: 'viber.com',
+    wechat: 'wechat.com', tiktok: 'tiktok.com', instagram: 'instagram.com', facebook: 'facebook.com',
+    twitter: 'twitter.com', x: 'twitter.com', linkedin: 'linkedin.com', pinterest: 'pinterest.com',
+    reddit: 'reddit.com', tumblr: 'tumblr.com', snapchat: 'snapchat.com', beal: 'bereal.com',
+    bereal: 'bereal.com', twitch: 'twitch.tv', zoom: 'zoom.us'
   };
 
+  // Try exact match first
+  if (domains[normalized]) return `https://logo.clearbit.com/${domains[normalized]}`;
+
+  // Try partial match
   for (const [key, domain] of Object.entries(domains)) {
-    const regex = new RegExp(`\\b${key}\\b`, 'i');
-    if (regex.test(lowerName) || normalized === key) {
+    if (lowerName.includes(key)) {
       return `https://logo.clearbit.com/${domain}`;
     }
   }
@@ -199,6 +210,10 @@ export default function App() {
     profile_image?: string, 
     account_mode?: string, 
     theme_color?: string,
+    ui_settings?: {
+      layouts?: any;
+      darkMode?: boolean;
+    },
     group?: {
       id: number;
       name: string;
@@ -278,6 +293,9 @@ export default function App() {
       if (savedUser) {
         try {
           const parsedUser = JSON.parse(savedUser);
+          if (parsedUser.ui_settings?.layouts) {
+            return parsedUser.ui_settings.layouts;
+          }
           const savedLayout = localStorage.getItem(`dashboard_layout_${parsedUser.id}`);
           if (savedLayout) {
             return JSON.parse(savedLayout);
@@ -301,6 +319,15 @@ export default function App() {
   const [scanningReceipt, setScanningReceipt] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          if (parsedUser.ui_settings?.darkMode !== undefined) {
+            return parsedUser.ui_settings.darkMode;
+          }
+        } catch (e) {}
+      }
       return localStorage.getItem('theme') === 'dark' || 
         (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
     }
@@ -315,7 +342,20 @@ export default function App() {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
-  }, [darkMode]);
+
+    if (user && user.ui_settings?.darkMode !== darkMode) {
+      const newUiSettings = { ...(user.ui_settings || {}), darkMode };
+      fetch('/api/auth/profile', {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ ui_settings: newUiSettings })
+      }).then(res => {
+        if (res.ok) return res.json();
+      }).then(updatedUser => {
+        if (updatedUser) setUser(updatedUser);
+      });
+    }
+  }, [darkMode, user]);
 
   // Form states
   const [showExpenseForm, setShowExpenseForm] = useState(false);
@@ -340,16 +380,20 @@ export default function App() {
       localStorage.setItem('user', JSON.stringify(user));
       fetchData();
       
-      // Load user layout
-      const savedLayout = localStorage.getItem(`dashboard_layout_${user.id}`);
-      if (savedLayout) {
-        try {
-          setLayouts(JSON.parse(savedLayout));
-        } catch (e) {
-          console.error("Error loading layout", e);
-        }
+      // Load user layout from ui_settings if available
+      if (user.ui_settings?.layouts) {
+        setLayouts(user.ui_settings.layouts);
       } else {
-        setLayouts(DEFAULT_LAYOUTS);
+        const savedLayout = localStorage.getItem(`dashboard_layout_${user.id}`);
+        if (savedLayout) {
+          try {
+            setLayouts(JSON.parse(savedLayout));
+          } catch (e) {
+            console.error("Error loading layout", e);
+          }
+        } else {
+          setLayouts(DEFAULT_LAYOUTS);
+        }
       }
     } else {
       localStorage.removeItem('user');
@@ -357,10 +401,26 @@ export default function App() {
     }
   }, [user]);
 
-  const handleLayoutChange = (currentLayout: any, allLayouts: any) => {
+  const handleLayoutChange = async (currentLayout: any, allLayouts: any) => {
     setLayouts(allLayouts);
     if (user) {
       localStorage.setItem(`dashboard_layout_${user.id}`, JSON.stringify(allLayouts));
+      
+      // Persist to server
+      try {
+        const newUiSettings = { ...(user.ui_settings || {}), layouts: allLayouts };
+        const res = await fetch('/api/auth/profile', {
+          method: 'PATCH',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ ui_settings: newUiSettings })
+        });
+        if (res.ok) {
+          const updatedUser = await res.json();
+          setUser(updatedUser);
+        }
+      } catch (error) {
+        console.error("Error persisting layout to server", error);
+      }
     }
   };
 
@@ -2166,6 +2226,7 @@ export default function App() {
                               <img 
                                 src={brandLogo} 
                                 alt={rec.description} 
+                                referrerPolicy="no-referrer"
                                 className="absolute inset-0 w-full h-full object-contain p-1.5" 
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
@@ -2303,6 +2364,7 @@ export default function App() {
                               <img 
                                 src={brandLogo} 
                                 alt={expense.description || expense.category_name} 
+                                referrerPolicy="no-referrer"
                                 className="absolute inset-0 w-full h-full object-contain p-1.5" 
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
