@@ -41,7 +41,8 @@ import {
   Eye,
   EyeOff,
   Bell,
-  BellOff
+  BellOff,
+  Quote
 } from 'lucide-react';
 import { 
   PieChart, 
@@ -303,6 +304,34 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [activeChartTab, setActiveChartTab] = useState<'categories' | 'trend'>('categories');
   const [mounted, setMounted] = useState(false);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+  const loginSlides = [
+    {
+      id: 'overview',
+      quote: "Control total sobre tus ingresos y gastos diarios.",
+      author: "Dashboard Intuitivo"
+    },
+    {
+      id: 'goals',
+      quote: "Establece metas y haz seguimiento de tu progreso.",
+      author: "Ahorro Inteligente"
+    },
+    {
+      id: 'insights',
+      quote: "Entiende tus hábitos con análisis detallados.",
+      author: "Estadísticas Claras"
+    }
+  ];
+
+  useEffect(() => {
+    if (!user) {
+      const interval = setInterval(() => {
+        setCurrentSlideIndex((prev) => (prev + 1) % loginSlides.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user, loginSlides.length]);
   
   useEffect(() => {
     setMounted(true);
@@ -1635,50 +1664,155 @@ export default function App() {
           <div className="hidden lg:flex w-1/2 bg-stone-100 dark:bg-stone-900 relative overflow-hidden items-center justify-center">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent dark:from-emerald-500/5" />
             
-            {/* Decorative elements */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative w-full max-w-lg aspect-square"
-            >
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-emerald-500/20 dark:bg-emerald-500/10 blur-[100px] rounded-full" />
-              
-              <div className="relative z-10 grid grid-cols-2 gap-6 p-8">
-                <div className="space-y-6 translate-y-12">
-                  <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800">
-                    <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center mb-4">
-                      <TrendingUp className="text-emerald-600 dark:text-emerald-400" size={20} />
-                    </div>
-                    <div className="text-sm text-stone-500 dark:text-stone-400 font-medium mb-1">Ingresos</div>
-                    <div className="text-2xl font-black text-stone-900 dark:text-stone-100">+2,450€</div>
-                  </div>
-                  <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800">
-                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mb-4">
-                      <Target className="text-blue-600 dark:text-blue-400" size={20} />
-                    </div>
-                    <div className="text-sm text-stone-500 dark:text-stone-400 font-medium mb-1">Ahorro</div>
-                    <div className="text-2xl font-black text-stone-900 dark:text-stone-100">850€</div>
-                  </div>
-                </div>
-                <div className="space-y-6">
-                  <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800">
-                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mb-4">
-                      <TrendingDown className="text-red-600 dark:text-red-400" size={20} />
-                    </div>
-                    <div className="text-sm text-stone-500 dark:text-stone-400 font-medium mb-1">Gastos</div>
-                    <div className="text-2xl font-black text-stone-900 dark:text-stone-100">-1,240€</div>
-                  </div>
-                  <div className="bg-stone-900 dark:bg-stone-800 p-6 rounded-3xl shadow-2xl border border-stone-800 dark:border-stone-700 text-white">
-                    <div className="w-10 h-10 bg-stone-800 dark:bg-stone-700 rounded-full flex items-center justify-center mb-4">
-                      <PieChartIcon className="text-stone-300" size={20} />
-                    </div>
-                    <div className="text-sm text-stone-400 font-medium mb-1">Balance</div>
-                    <div className="text-2xl font-black">1,210€</div>
-                  </div>
+            {/* Decorative elements (The Cards) */}
+            <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-12">
+              <div className="relative w-full max-w-lg aspect-square flex items-center justify-center mb-4">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-emerald-500/20 dark:bg-emerald-500/10 blur-[100px] rounded-full" />
+                
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={currentSlideIndex}
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                    transition={{ duration: 0.5 }}
+                    className="relative z-10 w-full"
+                  >
+                    {loginSlides[currentSlideIndex].id === 'overview' && (
+                      <div className="grid grid-cols-2 gap-6 p-8 w-full">
+                        <div className="space-y-6 translate-y-12">
+                          <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800">
+                            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center mb-4">
+                              <TrendingUp className="text-emerald-600 dark:text-emerald-400" size={20} />
+                            </div>
+                            <div className="text-sm text-stone-500 dark:text-stone-400 font-medium mb-1">Ingresos</div>
+                            <div className="text-2xl font-black text-stone-900 dark:text-stone-100">+2,450€</div>
+                          </div>
+                          <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800">
+                            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mb-4">
+                              <Target className="text-blue-600 dark:text-blue-400" size={20} />
+                            </div>
+                            <div className="text-sm text-stone-500 dark:text-stone-400 font-medium mb-1">Ahorro</div>
+                            <div className="text-2xl font-black text-stone-900 dark:text-stone-100">850€</div>
+                          </div>
+                        </div>
+                        <div className="space-y-6">
+                          <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800">
+                            <div className="w-10 h-10 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mb-4">
+                              <TrendingDown className="text-red-600 dark:text-red-400" size={20} />
+                            </div>
+                            <div className="text-sm text-stone-500 dark:text-stone-400 font-medium mb-1">Gastos</div>
+                            <div className="text-2xl font-black text-stone-900 dark:text-stone-100">-1,240€</div>
+                          </div>
+                          <div className="bg-stone-900 dark:bg-stone-800 p-6 rounded-3xl shadow-2xl border border-stone-800 dark:border-stone-700 text-white">
+                            <div className="w-10 h-10 bg-stone-800 dark:bg-stone-700 rounded-full flex items-center justify-center mb-4">
+                              <PieChartIcon className="text-stone-300" size={20} />
+                            </div>
+                            <div className="text-sm text-stone-400 font-medium mb-1">Balance</div>
+                            <div className="text-2xl font-black">1,210€</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {loginSlides[currentSlideIndex].id === 'goals' && (
+                      <div className="flex flex-col gap-6 p-8 w-full">
+                        <div className="bg-white dark:bg-stone-950 p-8 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800 w-full">
+                          <div className="flex justify-between items-start mb-6">
+                            <div>
+                              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/50 rounded-2xl flex items-center justify-center mb-4">
+                                <Target className="text-emerald-600 dark:text-emerald-400" size={24} />
+                              </div>
+                              <h3 className="text-xl font-black text-stone-900 dark:text-stone-100">Fondo de Emergencia</h3>
+                            </div>
+                            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">75%</span>
+                          </div>
+                          <div className="h-3 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden mb-4">
+                            <div className="h-full bg-emerald-500 rounded-full w-3/4" />
+                          </div>
+                          <div className="flex justify-between text-sm font-bold">
+                            <span className="text-stone-400">3,000€</span>
+                            <span className="text-stone-900 dark:text-stone-100">4,000€</span>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white dark:bg-stone-950 p-6 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800 w-3/4 self-end">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
+                              <Car className="text-blue-600 dark:text-blue-400" size={20} />
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold text-stone-900 dark:text-stone-100">Coche Nuevo</div>
+                              <div className="text-xs text-stone-500 font-medium">Quedan 8 meses</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {loginSlides[currentSlideIndex].id === 'insights' && (
+                      <div className="grid grid-cols-1 gap-6 p-8 w-full">
+                        <div className="bg-white dark:bg-stone-950 p-8 rounded-3xl shadow-2xl border border-stone-100 dark:border-stone-800 w-full">
+                          <div className="flex items-center justify-between mb-8">
+                            <div className="text-lg font-black text-stone-900 dark:text-stone-100">Distribución</div>
+                            <PieChartIcon className="text-stone-400" size={24} />
+                          </div>
+                          <div className="flex items-center justify-center gap-8">
+                            <div className="relative w-32 h-32 rounded-full border-[12px] border-emerald-500 border-r-blue-500 border-b-blue-500 border-l-emerald-500" />
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                                <span className="text-sm font-bold text-stone-600 dark:text-stone-400">Vivienda (50%)</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                                <span className="text-sm font-bold text-stone-600 dark:text-stone-400">Ocio (30%)</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full bg-stone-200 dark:bg-stone-700" />
+                                <span className="text-sm font-bold text-stone-600 dark:text-stone-400">Otros (20%)</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Quote & Indicators */}
+              <div className="relative z-10 text-center mt-8">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentSlideIndex}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.5 }}
+                    className="mb-8 h-16 flex flex-col justify-center"
+                  >
+                    <p className="text-stone-900 dark:text-white font-black text-xl tracking-tight">"{loginSlides[currentSlideIndex].quote}"</p>
+                    <p className="text-emerald-600 dark:text-emerald-400 font-bold tracking-widest uppercase text-xs mt-2">
+                      {loginSlides[currentSlideIndex].author}
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+                <div className="flex justify-center gap-3">
+                  {loginSlides.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentSlideIndex(idx)}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all duration-500",
+                        idx === currentSlideIndex ? "w-8 bg-emerald-500" : "w-2 bg-stone-300 dark:bg-stone-700 hover:bg-stone-400 dark:hover:bg-stone-600"
+                      )}
+                    />
+                  ))}
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
 
           <button
