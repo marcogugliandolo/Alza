@@ -368,6 +368,7 @@ export default function App() {
   const [aiMessages, setAiMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [scanningReceipt, setScanningReceipt] = useState(false);
+  const [privacyMode, setPrivacyMode] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedUser = localStorage.getItem('user');
@@ -2028,6 +2029,17 @@ export default function App() {
 
                       <button
                         onClick={() => {
+                          setPrivacyMode(!privacyMode);
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors"
+                      >
+                        {privacyMode ? <Eye size={16} /> : <EyeOff size={16} />}
+                        <span>Modo Privacidad</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
                           resetLayout();
                           setShowUserMenu(false);
                         }}
@@ -2202,7 +2214,9 @@ export default function App() {
                   </div>
                   <span className="text-emerald-50 text-sm font-bold uppercase tracking-wider">Gasto Total</span>
                 </div>
-                <div className="text-4xl sm:text-5xl font-black tracking-tighter text-white truncate">{totalExpenses.toLocaleString()}€</div>
+                <div className="text-4xl sm:text-5xl font-black tracking-tighter text-white truncate">
+                  {privacyMode ? '••••' : `${totalExpenses.toLocaleString()}€`}
+                </div>
                 <div className="text-emerald-100/80 text-[10px] mt-1 font-medium">Desde el inicio</div>
               </div>
 
@@ -2217,7 +2231,9 @@ export default function App() {
                   </div>
                   <span className="text-emerald-700 dark:text-emerald-300 text-sm font-bold uppercase tracking-wider">Este Mes</span>
                 </div>
-                <div className="text-2xl sm:text-3xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100 truncate">{monthlyExpenses.toLocaleString()}€</div>
+                <div className="text-2xl sm:text-3xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100 truncate">
+                  {privacyMode ? '••••' : `${monthlyExpenses.toLocaleString()}€`}
+                </div>
                 <div className="text-emerald-600/70 dark:text-emerald-400/70 text-[10px] mt-1 font-medium capitalize">
                   {format(new Date(selectedYear, selectedMonth), 'MMMM yyyy', { locale: es })}
                 </div>
@@ -2416,8 +2432,12 @@ export default function App() {
                             />
                           </div>
                           <div className="flex justify-between text-[11px] font-bold">
-                            <span className="text-stone-400 dark:text-stone-500">{goal.current_amount.toLocaleString()}€</span>
-                            <span className="text-stone-800 dark:text-stone-200">Objetivo: {goal.target_amount.toLocaleString()}€</span>
+                            <span className="text-stone-400 dark:text-stone-500">
+                              {privacyMode ? '•••' : `${goal.current_amount.toLocaleString()}€`}
+                            </span>
+                            <span className="text-stone-800 dark:text-stone-200">
+                              Objetivo: {privacyMode ? '•••' : `${goal.target_amount.toLocaleString()}€`}
+                            </span>
                           </div>
                         </div>
 
@@ -2489,7 +2509,9 @@ export default function App() {
                             <span className="text-sm font-bold text-stone-700 dark:text-stone-300">{cat.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-stone-900 dark:text-stone-100">{spent.toLocaleString()}€</span>
+                            <span className="text-xs font-black text-stone-900 dark:text-stone-100">
+                              {privacyMode ? '•••' : `${spent.toLocaleString()}€`}
+                            </span>
                             <span className="text-stone-400 text-[10px]">/</span>
                             <input 
                               type="number"
@@ -2542,22 +2564,23 @@ export default function App() {
                 <div className="space-y-4">
                   {recurringExpenses.length > 0 ? recurringExpenses.map(rec => {
                     const Icon = ICON_MAP[rec.category_icon] || MoreHorizontal;
-                    const brandLogo = getBrandLogo(rec.description || rec.category_name);
+                    const brandLogo = getBrandLogo(rec.description || rec.category_name || '');
                     return (
                       <div key={rec.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 shrink-0 p-2.5 rounded-xl text-white relative flex items-center justify-center overflow-hidden" style={{ backgroundColor: brandLogo ? '#ffffff' : (rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color) }}>
+                          <div className="w-10 h-10 shrink-0 p-2 rounded-xl text-white relative flex items-center justify-center overflow-hidden" style={{ backgroundColor: brandLogo ? '#ffffff' : (rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color) }}>
                             {brandLogo && (
                               <img 
                                 src={`${brandLogo}?fallback=false`} 
-                                alt={rec.description} 
+                                alt={rec.description || rec.category_name} 
                                 referrerPolicy="no-referrer"
-                                className="absolute inset-0 w-full h-full object-contain p-1" 
+                                className="absolute inset-0 w-full h-full object-contain p-1.5" 
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
-                                  if (e.currentTarget.parentElement) {
-                                    e.currentTarget.parentElement.style.backgroundColor = rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color;
-                                    const iconEl = e.currentTarget.parentElement.querySelector('svg');
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    parent.style.backgroundColor = rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color;
+                                    const iconEl = parent.querySelector('svg');
                                     if (iconEl) iconEl.style.display = 'block';
                                   }
                                 }} 
@@ -2566,14 +2589,16 @@ export default function App() {
                             <Icon size={18} style={{ display: brandLogo ? 'none' : 'block' }} />
                           </div>
                           <div>
-                            <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{rec.description}</div>
+                            <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{rec.description || rec.category_name}</div>
                             <div className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest">
                               {rec.frequency === 'monthly' ? 'Mensual' : 'Semanal'} • Próximo: {format(parseISO(rec.next_date), 'dd MMM', { locale: es })}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
-                          <div className="font-black text-stone-900 dark:text-stone-100">{rec.amount.toLocaleString()}€</div>
+                          <div className="font-black text-stone-900 dark:text-stone-100">
+                            {privacyMode ? '•••' : `${rec.amount.toLocaleString()}€`}
+                          </div>
                           <button 
                             onClick={() => openEditRecurring(rec)}
                             className="text-stone-300 hover:text-emerald-500 transition-colors"
@@ -2699,7 +2724,9 @@ export default function App() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="font-black text-sm text-emerald-600 dark:text-emerald-400">-{expense.amount.toLocaleString()}€</div>
+                          <div className="font-black text-sm text-emerald-600 dark:text-emerald-400">
+                            {privacyMode ? '•••' : `-${expense.amount.toLocaleString()}€`}
+                          </div>
                           <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all">
                             <button 
                               onClick={() => openEditExpense(expense)}

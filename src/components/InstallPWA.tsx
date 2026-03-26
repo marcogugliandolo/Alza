@@ -71,11 +71,11 @@ export const InstallPWA: React.FC = () => {
                 <Download size={24} />
               </div>
               <div>
-                <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Instalar App</h3>
+                <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Instalar Alza</h3>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
                   {isIOS 
-                    ? 'Pulsa el botón de compartir y luego "Añadir a la pantalla de inicio".'
-                    : 'Añade esta aplicación a tu pantalla de inicio para un acceso rápido.'}
+                    ? 'Pulsa el botón de compartir y luego "Añadir a la pantalla de inicio" para instalar Alza.'
+                    : 'Añade Alza a tu pantalla de inicio para un acceso rápido y seguro.'}
                 </p>
               </div>
             </div>
