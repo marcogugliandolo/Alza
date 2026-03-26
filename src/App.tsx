@@ -368,7 +368,46 @@ export default function App() {
   const [aiMessages, setAiMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [scanningReceipt, setScanningReceipt] = useState(false);
-  const [privacyMode, setPrivacyMode] = useState(false);
+  const [privacyMode, setPrivacyMode] = useState(() => {
+    return localStorage.getItem('privacyMode') === 'true';
+  });
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    return localStorage.getItem('notificationsEnabled') === 'true' && 
+           "Notification" in window && 
+           Notification.permission === "granted";
+  });
+  const sentPushNotifications = useRef<Set<string>>(new Set());
+
+  const requestNotificationPermission = async () => {
+    if (!("Notification" in window)) {
+      alert("Este navegador no soporta notificaciones de escritorio.");
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      alert("Has bloqueado las notificaciones. Por favor, habilítalas en la configuración de tu navegador.");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      setNotificationsEnabled(true);
+      localStorage.setItem('notificationsEnabled', 'true');
+      new Notification("¡Notificaciones activadas!", {
+        body: "Recibirás avisos sobre tus presupuestos y metas.",
+        icon: "/pwa-192x192.png"
+      });
+    }
+  };
+
+  const toggleNotifications = () => {
+    if (notificationsEnabled) {
+      setNotificationsEnabled(false);
+      localStorage.setItem('notificationsEnabled', 'false');
+    } else {
+      requestNotificationPermission();
+    }
+  };
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedUser = localStorage.getItem('user');
@@ -442,13 +481,14 @@ export default function App() {
         .reduce((sum, e) => sum + e.amount, 0);
       
       const percentage = (spent / cat.budget) * 100;
+      const formatAmount = (val: number) => privacyMode ? '***' : `${val.toLocaleString()}€`;
       
       if (percentage >= 100) {
         generatedNotifications.push({
           id: `budget-100-${cat.id}`,
           type: 'budget',
           title: 'Presupuesto Excedido',
-          message: `Has superado el presupuesto de ${cat.name} (${spent.toLocaleString()}€ / ${cat.budget.toLocaleString()}€)`,
+          message: `Has superado el presupuesto de ${cat.name} (${formatAmount(spent)} / ${formatAmount(cat.budget)})`,
           date: now.toISOString(),
           read: false,
           severity: 'error'
@@ -458,7 +498,7 @@ export default function App() {
           id: `budget-80-${cat.id}`,
           type: 'budget',
           title: 'Presupuesto al 80%',
-          message: `Estás cerca de agotar el presupuesto de ${cat.name} (${spent.toLocaleString()}€ / ${cat.budget.toLocaleString()}€)`,
+          message: `Estás cerca de agotar el presupuesto de ${cat.name} (${formatAmount(spent)} / ${formatAmount(cat.budget)})`,
           date: now.toISOString(),
           read: false,
           severity: 'warning'
@@ -470,13 +510,14 @@ export default function App() {
     recurringExpenses.forEach(rec => {
       const nextDate = parseISO(rec.next_date);
       const daysUntil = differenceInDays(nextDate, now);
+      const formatAmount = (val: number) => privacyMode ? '***' : `${val.toLocaleString()}€`;
       
       if (daysUntil >= 0 && daysUntil <= 3) {
         generatedNotifications.push({
           id: `recurring-${rec.id}`,
           type: 'recurring',
           title: 'Próximo Cobro',
-          message: `En ${daysUntil === 0 ? 'hoy' : daysUntil === 1 ? 'mañana' : daysUntil + ' días'} se cobrará ${rec.description} (${rec.amount.toLocaleString()}€)`,
+          message: `En ${daysUntil === 0 ? 'hoy' : daysUntil === 1 ? 'mañana' : daysUntil + ' días'} se cobrará ${rec.description} (${formatAmount(rec.amount)})`,
           date: now.toISOString(),
           read: false,
           severity: 'info'
@@ -504,10 +545,28 @@ export default function App() {
     setNotifications(prev => {
       const isSameCount = prev.length === generatedNotifications.length;
       const isSameContent = isSameCount && generatedNotifications.every((n, i) => n.id === prev[i].id);
+      
       if (isSameContent) return prev;
+
+      // Send push notifications for new alerts if enabled
+      if (notificationsEnabled && "Notification" in window && Notification.permission === "granted") {
+        generatedNotifications.forEach(n => {
+          if (!sentPushNotifications.current.has(n.id)) {
+            // Only notify for high severity or goals
+            if (n.severity === 'error' || n.type === 'goal' || n.type === 'recurring') {
+              new Notification(n.title, {
+                body: n.message,
+                icon: "/pwa-192x192.png"
+              });
+              sentPushNotifications.current.add(n.id);
+            }
+          }
+        });
+      }
+
       return generatedNotifications;
     });
-  }, [expenses, categories, recurringExpenses, goals, user, loading]);
+  }, [expenses, categories, recurringExpenses, goals, user, loading, notificationsEnabled, privacyMode]);
 
   useEffect(() => {
     if (user) {
@@ -2036,6 +2095,17 @@ export default function App() {
                       >
                         {privacyMode ? <Eye size={16} /> : <EyeOff size={16} />}
                         <span>Modo Privacidad</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          toggleNotifications();
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors"
+                      >
+                        {notificationsEnabled ? <Bell size={16} /> : <BellOff size={16} />}
+                        <span>{notificationsEnabled ? 'Desactivar Avisos' : 'Activar Avisos'}</span>
                       </button>
 
                       <button

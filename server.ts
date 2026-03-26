@@ -201,6 +201,22 @@ async function startServer() {
     res.status(401).json({ error: "No autorizado" });
   };
 
+  // IP Restriction Middleware for External API
+  const restrictByIP = (req: any, res: any, next: any) => {
+    const allowedIP = "82.70.78.105";
+    const clientIP = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    
+    // x-forwarded-for can be a comma-separated list
+    const firstIP = typeof clientIP === 'string' ? clientIP.split(',')[0].trim() : clientIP;
+    
+    if (firstIP === allowedIP) {
+      return next();
+    }
+    
+    console.log(`Blocked request from unauthorized IP: ${firstIP}`);
+    res.status(403).json({ error: "Acceso denegado: IP no autorizada" });
+  };
+
   // Helper to get full user data with group info
   const getFullUserData = (userId: number) => {
     const user = db.prepare("SELECT id, username, profile_image, account_mode, theme_color, ui_settings FROM users WHERE id = ?").get(userId) as any;
@@ -985,6 +1001,29 @@ async function startServer() {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: "Error al eliminar el usuario y sus datos: " + (error as Error).message });
+    }
+  });
+
+  // External API Endpoint with IP Restriction
+  app.post("/api/external/expense", restrictByIP, (req, res) => {
+    const { amount, description, date, category_id, username } = req.body;
+    
+    if (!amount || !date || !category_id || !username) {
+      return res.status(400).json({ error: "Faltan campos obligatorios (amount, description, date, category_id, username)" });
+    }
+
+    const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username) as any;
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    try {
+      const result = db.prepare("INSERT INTO expenses (amount, description, date, category_id, user_id) VALUES (?, ?, ?, ?, ?)")
+        .run(amount, description, date, category_id, user.id);
+      res.json({ success: true, id: result.lastInsertRowid });
+    } catch (error) {
+      console.error("Error in external API:", error);
+      res.status(500).json({ error: "Error al insertar el gasto" });
     }
   });
 
