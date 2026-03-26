@@ -65,6 +65,7 @@ import { es } from 'date-fns/locale';
 import Markdown from 'react-markdown';
 import { GoogleGenAI } from "@google/genai";
 import { cn, type Category, type Expense, type Goal, type RecurringExpense, type Notification } from './lib/utils';
+import { InstallPWA } from './components/InstallPWA';
 
 const getBrandLogo = (name: string): string | null => {
   if (!name) return null;
@@ -3864,6 +3865,7 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+      <InstallPWA />
       </div>
     </div>
   );
