@@ -2126,8 +2126,8 @@ export default function App() {
         </div>
       )}
 
-      <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <main className="max-w-6xl mx-auto px-4 py-4 sm:py-8 space-y-4 sm:space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-8">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
                 <input 
@@ -2167,7 +2167,7 @@ export default function App() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden mb-8"
+              className="overflow-hidden mb-4 sm:mb-8"
             >
               <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl border border-stone-200 dark:border-stone-800 grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
@@ -2218,6 +2218,7 @@ export default function App() {
               onLayoutChange={handleLayoutChange}
               margin={width < 768 ? [16, 16] : [24, 24]}
               containerPadding={[0, 0]}
+              draggableHandle=".drag-handle"
             >
               {/* Summary Total */}
               <div key="summary-total" className="bg-emerald-600 dark:bg-emerald-700 p-5 rounded-3xl shadow-lg hover:shadow-xl transition-shadow flex flex-col justify-center relative">
@@ -2271,7 +2272,7 @@ export default function App() {
                 <div className="drag-handle cursor-move absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 z-10 bg-white/50 dark:bg-stone-800/50 rounded-xl backdrop-blur-sm">
                   <GripHorizontal size={20} />
                 </div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 pr-12">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-8 gap-4 pr-12">
                   <div>
                     <h3 className="text-2xl font-black tracking-tight text-stone-950 dark:text-stone-50">
                       {activeChartTab === 'categories' ? 'Distribución de Gastos' : 'Tendencia de Gastos'}
@@ -2491,7 +2492,7 @@ export default function App() {
                 <div className="drag-handle cursor-move absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 z-10 bg-white/50 dark:bg-stone-800/50 rounded-xl backdrop-blur-sm">
                   <GripHorizontal size={20} />
                 </div>
-                <div className="flex items-center justify-between mb-8 pr-12">
+                <div className="flex items-center justify-between mb-4 sm:mb-8 pr-12">
                   <div>
                     <h3 className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Presupuestos por Categoría</h3>
                     <p className="text-stone-400 dark:text-stone-500 text-sm">Controla tus límites mensuales</p>
@@ -2554,7 +2555,7 @@ export default function App() {
                 <div className="drag-handle cursor-move absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 z-10 bg-white/50 dark:bg-stone-800/50 rounded-xl backdrop-blur-sm">
                   <GripHorizontal size={20} />
                 </div>
-                <div className="flex items-center justify-between mb-8 pr-12">
+                <div className="flex items-center justify-between mb-4 sm:mb-8 pr-12">
                   <div>
                     <h3 className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Gastos Recurrentes</h3>
                     <p className="text-stone-400 dark:text-stone-500 text-sm">Suscripciones y pagos fijos</p>
