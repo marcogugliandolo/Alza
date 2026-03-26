@@ -54,10 +54,10 @@ import {
   XAxis, 
   YAxis, 
   Tooltip,
-  Legend
+  Legend,
+  CartesianGrid
 } from 'recharts';
-import { Responsive, WidthProvider } from 'react-grid-layout/legacy';
-const ResponsiveGridLayout = WidthProvider(Responsive);
+import { ResponsiveGridLayout, useContainerWidth } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, subMonths, differenceInDays } from 'date-fns';
@@ -219,6 +219,7 @@ const DEFAULT_LAYOUTS = {
 };
 
 export default function App() {
+  const { width, containerRef } = useContainerWidth();
   const [user, setUser] = useState<{ 
     id: number, 
     username: string, 
@@ -367,6 +368,7 @@ export default function App() {
   const [aiMessages, setAiMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [scanningReceipt, setScanningReceipt] = useState(false);
+  const [suggestedCategory, setSuggestedCategory] = useState<number | null>(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedUser = localStorage.getItem('user');
@@ -424,6 +426,31 @@ export default function App() {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Auto-categorization based on description
+  useEffect(() => {
+    if (newExpense.description.length > 2 && !newExpense.category_id) {
+      const lowerDesc = newExpense.description.toLowerCase();
+      const matchingExpenses = expenses.filter(e => e.description?.toLowerCase().includes(lowerDesc));
+      
+      if (matchingExpenses.length > 0) {
+        const categoryCounts = matchingExpenses.reduce((acc, exp) => {
+          acc[exp.category_id] = (acc[exp.category_id] || 0) + 1;
+          return acc;
+        }, {} as Record<number, number>);
+        
+        const mostFrequentCategoryId = Object.keys(categoryCounts).reduce((a, b) => 
+          categoryCounts[parseInt(a)] > categoryCounts[parseInt(b)] ? a : b
+        );
+        
+        setSuggestedCategory(parseInt(mostFrequentCategoryId));
+      } else {
+        setSuggestedCategory(null);
+      }
+    } else {
+      setSuggestedCategory(null);
+    }
+  }, [newExpense.description, expenses, newExpense.category_id]);
 
   useEffect(() => {
     if (!user || loading) return;
@@ -1834,21 +1861,23 @@ export default function App() {
         user?.account_mode === 'amigos' ? "theme-amigos" : ""
       )
     )}>
-      <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans pb-20 transition-colors duration-300 overflow-x-hidden">
+      <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans transition-colors duration-300 overflow-x-hidden">
         {/* Header */}
         <header className="bg-white dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800 sticky top-0 z-10 px-4 py-4 sm:px-6">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl text-white shadow-sm bg-emerald-600">
-              {user?.account_mode === 'familiar' ? <Users size={24} /> :
-               user?.account_mode === 'amigos' ? <Heart size={24} /> :
-               <Mountain size={24} />}
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight leading-none">Alza</h1>
-              <p className="text-[10px] font-bold uppercase tracking-widest mt-1 text-emerald-600 dark:text-emerald-400">
-                {user?.account_mode || 'Individual'}
-              </p>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl text-white shadow-sm bg-emerald-600">
+                {user?.account_mode === 'familiar' ? <Users size={24} /> :
+                 user?.account_mode === 'amigos' ? <Heart size={24} /> :
+                 <Mountain size={24} />}
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight leading-none">Alza</h1>
+                <p className="text-[10px] font-bold uppercase tracking-widest mt-1 text-emerald-600 dark:text-emerald-400">
+                  {user?.account_mode || 'Individual'}
+                </p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -1858,7 +1887,7 @@ export default function App() {
                 setNewExpense({ amount: '', description: '', category_id: '', date: format(new Date(), 'yyyy-MM-dd') });
                 setShowExpenseForm(true);
               }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-all shadow-sm active:scale-95"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white p-2 sm:px-4 sm:py-2 rounded-full flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
             >
               <Plus size={20} />
               <span className="hidden sm:inline">Nuevo Gasto</span>
@@ -1884,7 +1913,7 @@ export default function App() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-80 bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 overflow-hidden z-50"
+                    className="absolute right-[-60px] sm:right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-[360px] bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 overflow-hidden z-50"
                   >
                     <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
                       <h3 className="font-bold text-stone-900 dark:text-stone-100">Notificaciones</h3>
@@ -2099,35 +2128,35 @@ export default function App() {
 
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Buscar gastos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 transition-all text-stone-900 dark:text-stone-100"
-            />
-          </div>
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Buscar gastos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl focus:ring-2 focus:ring-emerald-500 transition-all text-stone-900 dark:text-stone-100"
+                />
+              </div>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setShowFilters(!showFilters)}
               className={cn(
-                "p-3 rounded-2xl border transition-all flex items-center gap-2 text-sm font-bold",
+                "p-3 rounded-2xl border transition-all flex items-center justify-center gap-2 text-sm font-bold",
                 showFilters 
                   ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400" 
                   : "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400"
               )}
             >
               <Filter size={18} />
-              Filtros
+              <span className="hidden sm:inline">Filtros</span>
             </button>
             <button 
               onClick={handleExport}
-              className="p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all flex items-center gap-2 text-sm font-bold"
+              className="p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all flex items-center justify-center gap-2 text-sm font-bold"
             >
               <Download size={18} />
-              Exportar
+              <span className="hidden sm:inline">Exportar</span>
             </button>
           </div>
         </div>
@@ -2177,17 +2206,17 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <div className="w-full">
+        <div className="w-full" ref={containerRef}>
           {mounted && (
             <ResponsiveGridLayout
               className="layout"
+              width={width}
               layouts={layouts}
               breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
               cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
               rowHeight={100}
               onLayoutChange={handleLayoutChange}
-              draggableHandle=".drag-handle"
-              margin={[24, 24]}
+              margin={width < 768 ? [16, 16] : [24, 24]}
               containerPadding={[0, 0]}
             >
               {/* Summary Total */}
@@ -2238,7 +2267,7 @@ export default function App() {
               </div>
 
               {/* Charts Card */}
-              <div key="charts" className="bg-white/60 dark:bg-stone-900/60 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-white/40 dark:border-stone-800/40 shadow-xl shadow-stone-200/20 dark:shadow-none hover:border-emerald-500/30 transition-all duration-500 flex flex-col h-full overflow-hidden relative">
+              <div key="charts" className="bg-white/60 dark:bg-stone-900/60 backdrop-blur-2xl p-5 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-white/40 dark:border-stone-800/40 shadow-xl shadow-stone-200/20 dark:shadow-none hover:border-emerald-500/30 transition-all duration-500 flex flex-col h-full overflow-hidden relative">
                 <div className="drag-handle cursor-move absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 z-10 bg-white/50 dark:bg-stone-800/50 rounded-xl backdrop-blur-sm">
                   <GripHorizontal size={20} />
                 </div>
@@ -2392,16 +2421,16 @@ export default function App() {
                       <motion.div 
                         layout
                         key={goal.id} 
-                        className="bg-white/60 dark:bg-stone-900/60 backdrop-blur-xl p-6 rounded-[2rem] border border-white/40 dark:border-stone-800/40 shadow-lg shadow-stone-200/10 dark:shadow-none space-y-4 hover:border-emerald-500/30 transition-all duration-500"
+                        className="bg-white/60 dark:bg-stone-900/60 backdrop-blur-xl p-5 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-white/40 dark:border-stone-800/40 shadow-lg shadow-stone-200/10 dark:shadow-none space-y-4 hover:border-emerald-500/30 transition-all duration-500"
                       >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-bold text-stone-800 dark:text-stone-200">{goal.name}</h4>
-                            <p className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest mt-0.5">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-stone-800 dark:text-stone-200 truncate">{goal.name}</h4>
+                            <p className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest mt-0.5 truncate">
                               {goal.deadline ? format(parseISO(goal.deadline), 'dd MMM yyyy', { locale: es }) : 'Sin fecha'}
                             </p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right shrink-0">
                             <div className="text-sm font-black text-emerald-600 dark:text-emerald-500">{Math.round(progress)}%</div>
                           </div>
                         </div>
@@ -2458,7 +2487,7 @@ export default function App() {
               </div>
 
               {/* Budgets */}
-              <div key="budgets" className="bg-white dark:bg-stone-900 p-8 rounded-[2rem] border border-stone-200/60 dark:border-stone-800 shadow-sm h-full overflow-y-auto custom-scrollbar relative">
+              <div key="budgets" className="bg-white dark:bg-stone-900 p-5 sm:p-8 rounded-[2rem] border border-stone-200/60 dark:border-stone-800 shadow-sm h-full overflow-y-auto custom-scrollbar relative">
                 <div className="drag-handle cursor-move absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 z-10 bg-white/50 dark:bg-stone-800/50 rounded-xl backdrop-blur-sm">
                   <GripHorizontal size={20} />
                 </div>
@@ -2483,9 +2512,9 @@ export default function App() {
                     return (
                       <div key={cat.id} className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color === '#10b981' ? 'var(--color-emerald-500)' : cat.color }} />
-                            <span className="text-sm font-bold text-stone-700 dark:text-stone-300">{cat.name}</span>
+                          <div className="flex items-center gap-2 min-w-0 pr-2">
+                            <div className="w-2 h-2 shrink-0 rounded-full" style={{ backgroundColor: cat.color === '#10b981' ? 'var(--color-emerald-500)' : cat.color }} />
+                            <span className="text-sm font-bold text-stone-700 dark:text-stone-300 truncate">{cat.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-black text-stone-900 dark:text-stone-100">{spent.toLocaleString()}€</span>
@@ -2521,7 +2550,7 @@ export default function App() {
               </div>
 
               {/* Recurring Expenses */}
-              <div key="recurring" className="bg-white dark:bg-stone-900 p-8 rounded-[2rem] border border-stone-200/60 dark:border-stone-800 shadow-sm h-full overflow-y-auto custom-scrollbar relative">
+              <div key="recurring" className="bg-white dark:bg-stone-900 p-5 sm:p-8 rounded-[2rem] border border-stone-200/60 dark:border-stone-800 shadow-sm h-full overflow-y-auto custom-scrollbar relative">
                 <div className="drag-handle cursor-move absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 z-10 bg-white/50 dark:bg-stone-800/50 rounded-xl backdrop-blur-sm">
                   <GripHorizontal size={20} />
                 </div>
@@ -2543,8 +2572,8 @@ export default function App() {
                     const Icon = ICON_MAP[rec.category_icon] || MoreHorizontal;
                     const brandLogo = getBrandLogo(rec.description || rec.category_name);
                     return (
-                      <div key={rec.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
-                        <div className="flex items-center gap-4">
+                      <div key={rec.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800 group">
+                        <div className="flex items-center gap-4 min-w-0">
                           <div className="w-10 h-10 shrink-0 p-2.5 rounded-xl text-white relative flex items-center justify-center overflow-hidden" style={{ backgroundColor: brandLogo ? '#ffffff' : (rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color) }}>
                             {brandLogo && (
                               <img 
@@ -2564,27 +2593,29 @@ export default function App() {
                             )}
                             <Icon size={18} style={{ display: brandLogo ? 'none' : 'block' }} />
                           </div>
-                          <div>
-                            <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{rec.description}</div>
-                            <div className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest">
+                          <div className="min-w-0">
+                            <div className="font-bold text-sm text-stone-900 dark:text-stone-100 truncate">{rec.description}</div>
+                            <div className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest truncate">
                               {rec.frequency === 'monthly' ? 'Mensual' : 'Semanal'} • Próximo: {format(parseISO(rec.next_date), 'dd MMM', { locale: es })}
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                           <div className="font-black text-stone-900 dark:text-stone-100">{rec.amount.toLocaleString()}€</div>
-                          <button 
-                            onClick={() => openEditRecurring(rec)}
-                            className="text-stone-300 hover:text-emerald-500 transition-colors"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteRecurring(rec.id)}
-                            className="text-stone-300 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="flex items-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                            <button 
+                              onClick={() => openEditRecurring(rec)}
+                              className="p-2 text-stone-400 dark:text-stone-500 hover:text-emerald-500 transition-colors"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteRecurring(rec.id)}
+                              className="p-2 text-stone-400 dark:text-stone-500 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -2595,7 +2626,7 @@ export default function App() {
               </div>
 
               {/* Sidebar Area */}
-              <div key="sidebar" className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-md p-6 rounded-[2rem] border border-stone-200/50 dark:border-stone-800/50 shadow-lg shadow-stone-200/20 dark:shadow-none flex flex-col h-full relative">
+              <div key="sidebar" className="bg-white/80 dark:bg-stone-900/80 backdrop-blur-md p-5 sm:p-6 rounded-[2rem] border border-stone-200/50 dark:border-stone-800/50 shadow-lg shadow-stone-200/20 dark:shadow-none flex flex-col h-full relative">
                 <div className="drag-handle cursor-move absolute top-4 right-4 p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 z-10 bg-white/50 dark:bg-stone-800/50 rounded-xl backdrop-blur-sm">
                   <GripHorizontal size={20} />
                 </div>
@@ -2652,9 +2683,9 @@ export default function App() {
                         key={expense.id}
                         className="flex items-center justify-between p-4 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 rounded-2xl transition-all group border border-transparent hover:border-emerald-100 dark:hover:border-emerald-900"
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
                           <div 
-                            className="p-3 rounded-2xl text-white shadow-sm relative flex items-center justify-center overflow-hidden"
+                            className="p-3 rounded-2xl text-white shadow-sm relative flex items-center justify-center overflow-hidden shrink-0"
                             style={{ backgroundColor: brandLogo ? '#ffffff' : (expense.category_color === '#10b981' ? 'var(--color-emerald-500)' : expense.category_color) }}
                           >
                             {brandLogo && (
@@ -2677,39 +2708,39 @@ export default function App() {
                           </div>
                           <div className="min-w-0">
                             <div className="font-bold text-sm text-stone-800 dark:text-stone-200 truncate">{expense.description || expense.category_name}</div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-[11px] text-stone-400 dark:text-stone-500 font-medium">{format(parseISO(expense.date), 'dd MMM', { locale: es })}</div>
+                            <div className="flex items-center gap-2 truncate">
+                              <div className="text-[11px] text-stone-400 dark:text-stone-500 font-medium shrink-0">{format(parseISO(expense.date), 'dd MMM', { locale: es })}</div>
                               {user?.account_mode !== 'individual' && expense.author_name && (
                                 <>
-                                  <span className="text-[10px] text-stone-300 dark:text-stone-700">•</span>
-                                  <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-stone-300 dark:text-stone-700 shrink-0">•</span>
+                                  <div className="flex items-center gap-1 min-w-0">
                                     {expense.author_image ? (
-                                      <img src={expense.author_image} alt="" className="w-3 h-3 rounded-full object-cover" referrerPolicy="no-referrer" />
+                                      <img src={expense.author_image} alt="" className="w-3 h-3 rounded-full object-cover shrink-0" referrerPolicy="no-referrer" />
                                     ) : (
-                                      <div className="w-3 h-3 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center">
+                                      <div className="w-3 h-3 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center shrink-0">
                                         <UserIcon size={6} />
                                       </div>
                                     )}
-                                    <span className="text-[10px] text-stone-400 dark:text-stone-500 font-bold">{expense.author_name}</span>
+                                    <span className="text-[10px] text-stone-400 dark:text-stone-500 font-bold truncate">{expense.author_name}</span>
                                   </div>
                                 </>
                               )}
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 sm:gap-3 shrink-0">
                           <div className="font-black text-sm text-emerald-600 dark:text-emerald-400">-{expense.amount.toLocaleString()}€</div>
-                          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all">
+                          <div className="flex items-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
                             <button 
                               onClick={() => openEditExpense(expense)}
-                              className="p-2 text-stone-300 dark:text-stone-600 hover:text-emerald-500 dark:hover:text-emerald-400 transition-all"
+                              className="p-2 text-stone-400 dark:text-stone-500 hover:text-emerald-500 dark:hover:text-emerald-400 transition-all"
                               title="Editar gasto"
                             >
                               <Edit2 size={16} />
                             </button>
                             <button 
                               onClick={() => handleDeleteExpense(expense.id)}
-                              className="p-2 text-stone-300 dark:text-stone-600 hover:text-red-500 dark:hover:text-red-400 transition-all"
+                              className="p-2 text-stone-400 dark:text-stone-500 hover:text-red-500 dark:hover:text-red-400 transition-all"
                               title="Eliminar gasto"
                             >
                               <Trash2 size={16} />
@@ -2752,7 +2783,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8 overflow-hidden"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-6 sm:p-8 overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500" />
               
@@ -2847,7 +2878,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-6 sm:p-8"
             >
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Mi Perfil</h2>
@@ -3117,7 +3148,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-2xl rounded-3xl shadow-2xl p-8 max-h-[80vh] overflow-y-auto"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-2xl rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[80vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Todos los Gastos</h2>
@@ -3130,9 +3161,9 @@ export default function App() {
               </div>
               <div className="space-y-2">
                 {expenses.map(expense => (
-                  <div key={expense.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800 rounded-2xl">
-                    <div className="font-bold text-sm text-stone-800 dark:text-stone-200">{expense.description || expense.category_name}</div>
-                    <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{expense.amount.toFixed(2)} €</div>
+                  <div key={expense.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800 rounded-2xl gap-4">
+                    <div className="font-bold text-sm text-stone-800 dark:text-stone-200 truncate">{expense.description || expense.category_name}</div>
+                    <div className="font-bold text-sm text-stone-900 dark:text-stone-100 shrink-0">{expense.amount.toFixed(2)} €</div>
                   </div>
                 ))}
               </div>
@@ -3156,7 +3187,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-6 sm:p-8"
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">{editingExpense ? 'Editar Gasto' : 'Registrar Gasto'}</h2>
@@ -3198,6 +3229,18 @@ export default function App() {
                     placeholder="Ej. Almuerzo, Gasolina..."
                     className="w-full bg-stone-50 dark:bg-stone-800 border-none rounded-xl p-4 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-emerald-500 transition-all"
                   />
+                  {suggestedCategory && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-stone-500">Sugerencia:</span>
+                      <button
+                        type="button"
+                        onClick={() => setNewExpense({...newExpense, category_id: suggestedCategory.toString()})}
+                        className="text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded-md hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
+                      >
+                        {categories.find(c => c.id === suggestedCategory)?.name}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -3271,7 +3314,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-6 sm:p-8"
             >
               <h2 className="text-2xl font-bold mb-6 text-stone-900 dark:text-stone-100">Nueva Meta de Ahorro</h2>
               <form onSubmit={handleAddGoal} className="space-y-4">
@@ -3345,7 +3388,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-6 sm:p-8"
             >
               <h2 className="text-2xl font-bold mb-6 text-stone-900 dark:text-stone-100">Nueva Categoría</h2>
               <form onSubmit={handleAddCategory} className="space-y-4">
@@ -3375,7 +3418,7 @@ export default function App() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-2">Icono</label>
-                  <div className="grid grid-cols-6 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                     {Object.keys(ICON_MAP).map(iconName => {
                       const IconComponent = ICON_MAP[iconName];
                       return (
@@ -3435,7 +3478,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-2xl rounded-3xl shadow-2xl p-8 max-h-[90vh] flex flex-col"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-2xl rounded-3xl shadow-2xl p-6 sm:p-8 max-h-[90vh] flex flex-col"
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
@@ -3459,16 +3502,16 @@ export default function App() {
                   {usersList.length > 0 ? (
                     usersList.map(u => (
                       <div key={u.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800 hover:border-emerald-200 dark:hover:border-emerald-900/30 transition-all group">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
                             {u.username.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <div className="font-bold text-stone-900 dark:text-stone-100">{u.username}</div>
-                            <div className="text-xs text-stone-500 dark:text-stone-400">ID: {u.id}</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-stone-900 dark:text-stone-100 truncate">{u.username}</div>
+                            <div className="text-xs text-stone-500 dark:text-stone-400 truncate">ID: {u.id}</div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           {(u.username !== 'gugliama' && u.username !== 'marcogugliandolo94@gmail.com') ? (
                             <>
                               <select 
@@ -3535,7 +3578,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-6 sm:p-8"
             >
               <h2 className="text-2xl font-bold mb-6 text-stone-900 dark:text-stone-100">Nuevo Usuario</h2>
               <form onSubmit={handleAddUser} className="space-y-4">
@@ -3604,7 +3647,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-8"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl shadow-2xl p-6 sm:p-8"
             >
               <h2 className="text-2xl font-bold mb-6 text-stone-900 dark:text-stone-100">Nuevo Gasto Recurrente</h2>
               <form onSubmit={handleAddRecurring} className="space-y-4">
@@ -3832,7 +3875,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white dark:bg-stone-900 w-full max-w-sm rounded-[2rem] shadow-2xl p-8 text-center"
+              className="relative bg-white dark:bg-stone-900 w-full max-w-sm rounded-[2rem] shadow-2xl p-6 sm:p-8 text-center"
             >
               <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600 dark:text-red-400">
                 <LogOut size={32} />
