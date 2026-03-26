@@ -14,9 +14,9 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         manifest: {
-          name: 'My Web App',
-          short_name: 'WebApp',
-          description: 'My Awesome Progressive Web App',
+          name: 'Alza',
+          short_name: 'Alza',
+          description: 'Gestión de finanzas personales Alza',
           theme_color: '#ffffff',
           icons: [
             {
