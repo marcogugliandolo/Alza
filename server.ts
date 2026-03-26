@@ -1027,6 +1027,32 @@ async function startServer() {
     }
   });
 
+  app.post("/api/external/recurring", restrictByIP, (req, res) => {
+    const { amount, description, category_id, frequency, next_date, username } = req.body;
+    
+    if (!amount || !category_id || !frequency || !next_date || !username) {
+      return res.status(400).json({ error: "Faltan campos obligatorios (amount, description, category_id, frequency, next_date, username)" });
+    }
+
+    if (!['monthly', 'weekly'].includes(frequency)) {
+      return res.status(400).json({ error: "Frecuencia inválida (debe ser 'monthly' o 'weekly')" });
+    }
+
+    const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username) as any;
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    try {
+      const result = db.prepare("INSERT INTO recurring_expenses (amount, description, category_id, frequency, next_date, user_id) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(amount, description, category_id, frequency, next_date, user.id);
+      res.json({ success: true, id: result.lastInsertRowid });
+    } catch (error) {
+      console.error("Error in external recurring API:", error);
+      res.status(500).json({ error: "Error al insertar el gasto recurrente" });
+    }
+  });
+
   // API 404 handler
   app.use("/api/*", (req, res) => {
     res.status(404).json({ error: "API endpoint not found" });

@@ -488,7 +488,7 @@ export default function App() {
           id: `budget-100-${cat.id}`,
           type: 'budget',
           title: 'Presupuesto Excedido',
-          message: `Has superado el presupuesto de ${cat.name} (${formatAmount(spent)} / ${formatAmount(cat.budget)})`,
+          message: `Has superado el presupuesto de ${cat.name} (${formatAmount(spent)} de ${formatAmount(cat.budget)})`,
           date: now.toISOString(),
           read: false,
           severity: 'error'
@@ -498,7 +498,7 @@ export default function App() {
           id: `budget-80-${cat.id}`,
           type: 'budget',
           title: 'Presupuesto al 80%',
-          message: `Estás cerca de agotar el presupuesto de ${cat.name} (${formatAmount(spent)} / ${formatAmount(cat.budget)})`,
+          message: `Estás cerca de agotar el presupuesto de ${cat.name} (${formatAmount(spent)} de ${formatAmount(cat.budget)})`,
           date: now.toISOString(),
           read: false,
           severity: 'warning'
