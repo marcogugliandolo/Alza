@@ -1930,8 +1930,12 @@ export default function App() {
                 onClick={() => setShowNotifications(!showNotifications)}
                 className="p-2 bg-stone-100 dark:bg-stone-800 rounded-full hover:bg-stone-200 dark:hover:bg-stone-700 transition-all border border-transparent hover:border-stone-300 dark:hover:border-stone-600 relative h-[40px] w-[40px] flex items-center justify-center"
               >
-                <Bell size={20} className="text-stone-600 dark:text-stone-400" />
-                {notifications.filter(n => !n.read).length > 0 && (
+                {notificationsEnabled ? (
+                  <Bell size={20} className="text-stone-600 dark:text-stone-400" />
+                ) : (
+                  <BellOff size={20} className="text-stone-600 dark:text-stone-400 opacity-50" />
+                )}
+                {notificationsEnabled && notifications.filter(n => !n.read).length > 0 && (
                   <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-stone-900">
                     {notifications.filter(n => !n.read).length}
                   </span>
@@ -1957,10 +1961,17 @@ export default function App() {
                       </button>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
-                      {notifications.length === 0 ? (
+                      {!notificationsEnabled ? (
                         <div className="p-8 text-center">
                           <div className="w-12 h-12 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-3">
                             <BellOff size={20} className="text-stone-400" />
+                          </div>
+                          <p className="text-sm text-stone-500 dark:text-stone-400">Los avisos están desactivados</p>
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <div className="w-12 h-12 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Bell size={20} className="text-stone-400" />
                           </div>
                           <p className="text-sm text-stone-500 dark:text-stone-400">No tienes notificaciones</p>
                         </div>
