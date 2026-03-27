@@ -3076,7 +3076,9 @@ export default function App() {
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Color de Acento</label>
+                    <div className="mb-4">
+                      <label className="text-xs font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest ml-1">Color de Acento</label>
+                    </div>
                     <div className="grid grid-cols-5 gap-3">
                       {[
                         { id: 'default', color: 'bg-emerald-500' },
