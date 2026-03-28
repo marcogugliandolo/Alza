@@ -1647,13 +1647,15 @@ export default function App() {
                   </motion.div>
                 )}
 
-                <button 
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-xl shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-[0.98] hover:-translate-y-1 mt-8 flex items-center justify-center gap-2 group"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-xl shadow-emerald-200 dark:shadow-emerald-900/20 transition-all mt-8 flex items-center justify-center gap-2 group"
                 >
                   {isRegistering ? 'Registrarse' : 'Iniciar Sesión'}
                   <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </button>
+                </motion.button>
 
                 <div className="text-center mt-6 space-y-4">
                   <button 
@@ -1708,12 +1710,14 @@ export default function App() {
                       >
                         Cancelar
                       </button>
-                      <button 
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         type="submit"
                         className="flex-1 py-3 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20"
                       >
                         Unirse
-                      </button>
+                      </motion.button>
                     </div>
                   </form>
                 </motion.div>
@@ -1876,12 +1880,14 @@ export default function App() {
             </div>
           </div>
 
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setDarkMode(!darkMode)}
-            className="fixed bottom-6 right-6 p-4 bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 transition-all z-50 hover:scale-110 active:scale-95"
+            className="fixed bottom-6 right-6 p-4 bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 transition-colors z-50"
           >
             {darkMode ? <Sun size={24} /> : <Moon size={24} />}
-          </button>
+          </motion.button>
         </div>
       </div>
     );
@@ -1913,17 +1919,19 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => {
                 setEditingExpense(null);
                 setNewExpense({ amount: '', description: '', category_id: '', date: format(new Date(), 'yyyy-MM-dd') });
                 setShowExpenseForm(true);
               }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-all shadow-sm active:scale-95"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full flex items-center gap-2 transition-colors shadow-sm"
             >
               <Plus size={20} />
               <span className="hidden sm:inline">Nuevo Gasto</span>
-            </button>
+            </motion.button>
 
             <div className="relative" ref={notificationsRef}>
               <button
@@ -2193,10 +2201,12 @@ export default function App() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setShowFilters(!showFilters)}
               className={cn(
-                "p-3 rounded-2xl border transition-all flex items-center gap-2 text-sm font-bold",
+                "p-3 rounded-2xl border transition-colors flex items-center gap-2 text-sm font-bold",
                 showFilters 
                   ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400" 
                   : "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400"
@@ -2204,14 +2214,16 @@ export default function App() {
             >
               <Filter size={18} />
               Filtros
-            </button>
-            <button 
+            </motion.button>
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleExport}
-              className="p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all flex items-center gap-2 text-sm font-bold"
+              className="p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors flex items-center gap-2 text-sm font-bold"
             >
               <Download size={18} />
               Exportar
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -2390,7 +2402,7 @@ export default function App() {
                                   backgroundColor: darkMode ? '#1c1917' : '#ffffff',
                                   color: darkMode ? '#f5f5f4' : '#1c1917'
                                 }}
-                                itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                                itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: darkMode ? '#f5f5f4' : '#1c1917' }}
                                 formatter={(value: number) => [`${value.toLocaleString()}€`, 'Total']}
                               />
                             </PieChart>
@@ -2439,7 +2451,7 @@ export default function App() {
                               backgroundColor: darkMode ? '#1c1917' : '#ffffff',
                               color: darkMode ? '#f5f5f4' : '#1c1917'
                             }}
-                            itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--color-emerald-600, #059669)' }}
+                            itemStyle={{ fontSize: '12px', fontWeight: 'bold', color: darkMode ? '#34d399' : '#059669' }}
                             labelStyle={{ fontSize: '10px', fontWeight: 'bold', color: darkMode ? '#78716c' : '#a8a29e', marginBottom: '4px' }}
                             labelFormatter={(label, payload) => payload[0]?.payload?.fullDate || label}
                             formatter={(value: number) => [`${value.toLocaleString()}€`, 'Gasto']}
@@ -2464,87 +2476,99 @@ export default function App() {
                 </div>
                 <div className="flex items-center justify-between px-2 pr-12">
                   <h3 className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Metas de Ahorro</h3>
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setShowGoalForm(true)}
                     className="text-emerald-600 hover:text-emerald-700 text-sm font-bold flex items-center gap-1.5"
                   >
                     <Plus size={18} /> Nueva Meta
-                  </button>
+                  </motion.button>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {goals.length > 0 ? goals.map(goal => {
-                    const progress = Math.min((goal.current_amount / goal.target_amount) * 100, 100);
-                    return (
-                      <motion.div 
-                        layout
-                        key={goal.id} 
-                        className="bg-white/60 dark:bg-stone-900/60 backdrop-blur-xl p-6 rounded-[2rem] border border-white/40 dark:border-stone-800/40 shadow-lg shadow-stone-200/10 dark:shadow-none space-y-4 hover:border-emerald-500/30 transition-all duration-500"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-bold text-stone-800 dark:text-stone-200">{goal.name}</h4>
-                            <p className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest mt-0.5">
-                              {goal.deadline ? format(parseISO(goal.deadline), 'dd MMM yyyy', { locale: es }) : 'Sin fecha'}
-                            </p>
+                  <AnimatePresence mode="popLayout">
+                    {goals.length > 0 ? goals.map(goal => {
+                      const progress = Math.min((goal.current_amount / goal.target_amount) * 100, 100);
+                      return (
+                        <motion.div 
+                          layout
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          key={goal.id} 
+                          className="bg-white/60 dark:bg-stone-900/60 backdrop-blur-xl p-6 rounded-[2rem] border border-white/40 dark:border-stone-800/40 shadow-lg shadow-stone-200/10 dark:shadow-none space-y-4 hover:border-emerald-500/30 transition-all duration-500"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-bold text-stone-800 dark:text-stone-200">{goal.name}</h4>
+                              <p className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest mt-0.5">
+                                {goal.deadline ? format(parseISO(goal.deadline), 'dd MMM yyyy', { locale: es }) : 'Sin fecha'}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-black text-emerald-600 dark:text-emerald-500">{Math.round(progress)}%</div>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-sm font-black text-emerald-600 dark:text-emerald-500">{Math.round(progress)}%</div>
+                          
+                          <div className="space-y-2">
+                            <div className="h-2.5 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                                className="h-full bg-emerald-500 rounded-full"
+                              />
+                            </div>
+                            <div className="flex justify-between text-[11px] font-bold">
+                              <span className="text-stone-400 dark:text-stone-500">
+                                {privacyMode ? '•••' : `${goal.current_amount.toLocaleString()}€`}
+                              </span>
+                              <span className="text-stone-800 dark:text-stone-200">
+                                Objetivo: {privacyMode ? '•••' : `${goal.target_amount.toLocaleString()}€`}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="h-2.5 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${progress}%` }}
-                              className="h-full bg-emerald-500 rounded-full"
-                            />
-                          </div>
-                          <div className="flex justify-between text-[11px] font-bold">
-                            <span className="text-stone-400 dark:text-stone-500">
-                              {privacyMode ? '•••' : `${goal.current_amount.toLocaleString()}€`}
-                            </span>
-                            <span className="text-stone-800 dark:text-stone-200">
-                              Objetivo: {privacyMode ? '•••' : `${goal.target_amount.toLocaleString()}€`}
-                            </span>
-                          </div>
-                        </div>
 
-                        <div className="flex gap-2 pt-2">
-                          <button 
-                            onClick={() => handleUpdateGoalProgress(goal.id, goal.current_amount, 50)}
-                            className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all"
-                          >
-                            +50€
-                          </button>
-                          <button 
-                            onClick={() => handleUpdateGoalProgress(goal.id, goal.current_amount, 100)}
-                            className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all"
-                          >
-                            +100€
-                          </button>
-                          <button 
-                            onClick={() => openEditGoal(goal)}
-                            className="p-2 rounded-xl bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:text-emerald-500 transition-colors"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteGoal(goal.id)}
-                            className="p-2 rounded-xl bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                          <div className="flex gap-2 pt-2">
+                            <button 
+                              onClick={() => handleUpdateGoalProgress(goal.id, goal.current_amount, 50)}
+                              className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all"
+                            >
+                              +50€
+                            </button>
+                            <button 
+                              onClick={() => handleUpdateGoalProgress(goal.id, goal.current_amount, 100)}
+                              className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all"
+                            >
+                              +100€
+                            </button>
+                            <button 
+                              onClick={() => openEditGoal(goal)}
+                              className="p-2 rounded-xl bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:text-emerald-500 transition-colors"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteGoal(goal.id)}
+                              className="p-2 rounded-xl bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    }) : (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="col-span-2 bg-stone-100/50 dark:bg-stone-900/50 border-2 border-dashed border-stone-200 dark:border-stone-800 rounded-[2rem] py-12 flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 gap-3"
+                      >
+                        <Target size={40} strokeWidth={1} />
+                        <p className="text-sm font-medium italic">Establece tu primera meta de ahorro</p>
                       </motion.div>
-                    );
-                  }) : (
-                    <div className="col-span-2 bg-stone-100/50 dark:bg-stone-900/50 border-2 border-dashed border-stone-200 dark:border-stone-800 rounded-[2rem] py-12 flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 gap-3">
-                      <Target size={40} strokeWidth={1} />
-                      <p className="text-sm font-medium italic">Establece tu primera meta de ahorro</p>
-                    </div>
-                  )}
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
@@ -2564,52 +2588,61 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
-                  {categories.map(cat => {
-                    const spent = searchFilteredExpenses
-                      .filter(e => e.category_id === cat.id && parseISO(e.date).getMonth() === selectedMonth && parseISO(e.date).getFullYear() === selectedYear)
-                      .reduce((sum, e) => sum + e.amount, 0);
-                    const percentage = cat.budget > 0 ? Math.min((spent / cat.budget) * 100, 100) : 0;
-                    const isOver = cat.budget > 0 && spent > cat.budget;
+                  <AnimatePresence mode="popLayout">
+                    {categories.map(cat => {
+                      const spent = searchFilteredExpenses
+                        .filter(e => e.category_id === cat.id && parseISO(e.date).getMonth() === selectedMonth && parseISO(e.date).getFullYear() === selectedYear)
+                        .reduce((sum, e) => sum + e.amount, 0);
+                      const percentage = cat.budget > 0 ? Math.min((spent / cat.budget) * 100, 100) : 0;
+                      const isOver = cat.budget > 0 && spent > cat.budget;
 
-                    return (
-                      <div key={cat.id} className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color === '#10b981' ? 'var(--color-emerald-500)' : cat.color }} />
-                            <span className="text-sm font-bold text-stone-700 dark:text-stone-300">{cat.name}</span>
+                      return (
+                        <motion.div 
+                          layout
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          key={cat.id} 
+                          className="space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color === '#10b981' ? 'var(--color-emerald-500)' : cat.color }} />
+                              <span className="text-sm font-bold text-stone-700 dark:text-stone-300">{cat.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-stone-900 dark:text-stone-100">
+                                {privacyMode ? '•••' : `${spent.toLocaleString()}€`}
+                              </span>
+                              <span className="text-stone-400 text-[10px]">/</span>
+                              <input 
+                                type="number"
+                                defaultValue={cat.budget}
+                                onBlur={(e) => handleUpdateBudget(cat.id, parseFloat(e.target.value) || 0)}
+                                className="w-16 bg-transparent border-none p-0 text-[10px] font-black text-stone-400 focus:text-emerald-600 focus:ring-0 transition-colors"
+                              />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-stone-900 dark:text-stone-100">
-                              {privacyMode ? '•••' : `${spent.toLocaleString()}€`}
-                            </span>
-                            <span className="text-stone-400 text-[10px]">/</span>
-                            <input 
-                              type="number"
-                              defaultValue={cat.budget}
-                              onBlur={(e) => handleUpdateBudget(cat.id, parseFloat(e.target.value) || 0)}
-                              className="w-16 bg-transparent border-none p-0 text-[10px] font-black text-stone-400 focus:text-emerald-600 focus:ring-0 transition-colors"
+                          <div className="h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${percentage}%` }}
+                              className={cn(
+                                "h-full rounded-full transition-all duration-1000",
+                                isOver ? "bg-red-500" : "bg-emerald-500"
+                              )}
                             />
                           </div>
-                        </div>
-                        <div className="h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${percentage}%` }}
-                            className={cn(
-                              "h-full rounded-full transition-all duration-1000",
-                              isOver ? "bg-red-500" : "bg-emerald-500"
-                            )}
-                          />
-                        </div>
-                        {isOver && (
-                          <p className="text-[10px] text-red-500 font-bold flex items-center gap-1">
-                            <TrendingUp size={10} />
-                            ¡Presupuesto excedido!
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {isOver && (
+                            <p className="text-[10px] text-red-500 font-bold flex items-center gap-1">
+                              <TrendingUp size={10} />
+                              ¡Presupuesto excedido!
+                            </p>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
                 </div>
               </div>
 
@@ -2623,70 +2656,96 @@ export default function App() {
                     <h3 className="text-xl font-bold tracking-tight text-stone-900 dark:text-stone-100">Gastos Recurrentes</h3>
                     <p className="text-stone-400 dark:text-stone-500 text-sm">Suscripciones y pagos fijos</p>
                   </div>
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => setShowRecurringForm(true)}
-                    className="p-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-100 transition-all"
+                    className="p-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-100 transition-colors"
                   >
                     <Plus size={20} />
-                  </button>
+                  </motion.button>
                 </div>
 
                 <div className="space-y-4">
-                  {recurringExpenses.length > 0 ? recurringExpenses.map(rec => {
-                    const Icon = ICON_MAP[rec.category_icon] || MoreHorizontal;
-                    const brandLogo = getBrandLogo(rec.description || rec.category_name || '');
-                    return (
-                      <div key={rec.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 shrink-0 p-2 rounded-xl text-white relative flex items-center justify-center overflow-hidden" style={{ backgroundColor: brandLogo ? '#ffffff' : (rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color) }}>
-                            {brandLogo && (
-                              <img 
-                                src={`${brandLogo}?fallback=false`} 
-                                alt={rec.description || rec.category_name} 
-                                referrerPolicy="no-referrer"
-                                className="absolute inset-0 w-full h-full object-contain p-1.5" 
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  const parent = e.currentTarget.parentElement;
-                                  if (parent) {
-                                    parent.style.backgroundColor = rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color;
-                                    const iconEl = parent.querySelector('svg');
-                                    if (iconEl) iconEl.style.display = 'block';
-                                  }
-                                }} 
-                              />
-                            )}
-                            <Icon size={18} style={{ display: brandLogo ? 'none' : 'block' }} />
-                          </div>
-                          <div>
-                            <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{rec.description || rec.category_name}</div>
-                            <div className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest">
-                              {rec.frequency === 'monthly' ? 'Mensual' : 'Semanal'} • Próximo: {format(parseISO(rec.next_date), 'dd MMM', { locale: es })}
+                  <AnimatePresence mode="popLayout">
+                    {recurringExpenses.length > 0 ? recurringExpenses.map(rec => {
+                      const Icon = ICON_MAP[rec.category_icon] || MoreHorizontal;
+                      const brandLogo = getBrandLogo(rec.description || rec.category_name || '');
+                      return (
+                        <motion.div 
+                          layout
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          key={rec.id} 
+                          className="relative overflow-hidden rounded-2xl"
+                        >
+                          <div className="absolute inset-0 flex items-center justify-between px-6 bg-stone-100 dark:bg-stone-800">
+                            <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm">
+                              <Edit2 size={18} /> Editar
+                            </div>
+                            <div className="flex items-center gap-2 text-red-500 font-bold text-sm">
+                              Eliminar <Trash2 size={18} />
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="font-black text-stone-900 dark:text-stone-100">
-                            {privacyMode ? '•••' : `${rec.amount.toLocaleString()}€`}
-                          </div>
-                          <button 
-                            onClick={() => openEditRecurring(rec)}
-                            className="text-stone-300 hover:text-emerald-500 transition-colors"
+
+                          <motion.div 
+                            drag="x"
+                            dragConstraints={{ left: 0, right: 0 }}
+                            dragElastic={0.2}
+                            onDragEnd={(e, info) => {
+                              if (info.offset.x < -80) handleDeleteRecurring(rec.id);
+                              else if (info.offset.x > 80) openEditRecurring(rec);
+                            }}
+                            className="relative flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800 z-10 cursor-grab active:cursor-grabbing"
                           >
-                            <Edit2 size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteRecurring(rec.id)}
-                            className="text-stone-300 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }) : (
-                    <div className="text-center py-8 text-stone-400 italic text-sm">No tienes gastos recurrentes configurados</div>
-                  )}
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 shrink-0 p-2 rounded-xl text-white relative flex items-center justify-center overflow-hidden" style={{ backgroundColor: brandLogo ? '#ffffff' : (rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color) }}>
+                                {brandLogo && (
+                                  <img 
+                                    src={`${brandLogo}?fallback=false`} 
+                                    alt={rec.description || rec.category_name} 
+                                    referrerPolicy="no-referrer"
+                                    className="absolute inset-0 w-full h-full object-contain p-1.5" 
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      const parent = e.currentTarget.parentElement;
+                                      if (parent) {
+                                        parent.style.backgroundColor = rec.category_color === '#10b981' ? 'var(--color-emerald-500)' : rec.category_color;
+                                        const iconEl = parent.querySelector('svg');
+                                        if (iconEl) iconEl.style.display = 'block';
+                                      }
+                                    }} 
+                                  />
+                                )}
+                                <Icon size={18} style={{ display: brandLogo ? 'none' : 'block' }} />
+                              </div>
+                              <div>
+                                <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{rec.description || rec.category_name}</div>
+                                <div className="text-[10px] text-stone-400 dark:text-stone-500 font-bold uppercase tracking-widest">
+                                  {rec.frequency === 'monthly' ? 'Mensual' : 'Semanal'} • Próximo: {format(parseISO(rec.next_date), 'dd MMM', { locale: es })}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="font-black text-stone-900 dark:text-stone-100">
+                                {privacyMode ? '•••' : `${rec.amount.toLocaleString()}€`}
+                              </div>
+                            </div>
+                          </motion.div>
+                        </motion.div>
+                      );
+                    }) : (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-center py-8 text-stone-400 italic text-sm"
+                      >
+                        No tienes gastos recurrentes configurados
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
@@ -2699,13 +2758,15 @@ export default function App() {
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold tracking-tight text-stone-900 dark:text-stone-100">Gastos</h3>
                     <div className="flex items-center gap-2">
-                      <button 
+                      <motion.button 
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => setShowExpenseListModal(true)}
                         className="p-1.5 bg-stone-50 dark:bg-stone-800 rounded-lg text-stone-400 dark:text-stone-500 hover:text-emerald-600 transition-colors"
                         title="Ver todos los gastos"
                       >
                         <Eye size={16} />
-                      </button>
+                      </motion.button>
                       <div className="p-1.5 bg-stone-50 dark:bg-stone-800 rounded-lg text-stone-400 dark:text-stone-500">
                         <TrendingDown size={16} />
                       </div>
@@ -2739,95 +2800,135 @@ export default function App() {
                 </div>
                 
                 <div className="flex-1 overflow-y-auto pr-2 space-y-1 custom-scrollbar">
-                  {filteredExpenses.length > 0 ? filteredExpenses.map(expense => {
-                    const Icon = ICON_MAP[expense.category_icon] || MoreHorizontal;
-                    const brandLogo = getBrandLogo(expense.description || expense.category_name);
-                    return (
-                      <motion.div 
-                        layout
-                        key={expense.id}
-                        className="flex items-center justify-between p-4 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 rounded-2xl transition-all group border border-transparent hover:border-emerald-100 dark:hover:border-emerald-900"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div 
-                            className="p-3 rounded-2xl text-white shadow-sm relative flex items-center justify-center overflow-hidden"
-                            style={{ backgroundColor: brandLogo ? '#ffffff' : (expense.category_color === '#10b981' ? 'var(--color-emerald-500)' : expense.category_color) }}
-                          >
-                            {brandLogo && (
-                              <img 
-                                src={`${brandLogo}?fallback=false`} 
-                                alt={expense.description || expense.category_name} 
-                                referrerPolicy="no-referrer"
-                                className="absolute inset-0 w-full h-full object-contain p-1" 
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  if (e.currentTarget.parentElement) {
-                                    e.currentTarget.parentElement.style.backgroundColor = expense.category_color === '#10b981' ? 'var(--color-emerald-500)' : expense.category_color;
-                                    const iconEl = e.currentTarget.parentElement.querySelector('svg');
-                                    if (iconEl) iconEl.style.display = 'block';
-                                  }
-                                }} 
-                              />
-                            )}
-                            <Icon size={18} style={{ display: brandLogo ? 'none' : 'block' }} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-bold text-sm text-stone-800 dark:text-stone-200 truncate">{expense.description || expense.category_name}</div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-[11px] text-stone-400 dark:text-stone-500 font-medium">{format(parseISO(expense.date), 'dd MMM', { locale: es })}</div>
-                              {user?.account_mode !== 'individual' && expense.author_name && (
-                                <>
-                                  <span className="text-[10px] text-stone-300 dark:text-stone-700">•</span>
-                                  <div className="flex items-center gap-1">
-                                    {expense.author_image ? (
-                                      <img src={expense.author_image} alt="" className="w-3 h-3 rounded-full object-cover" referrerPolicy="no-referrer" />
-                                    ) : (
-                                      <div className="w-3 h-3 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center">
-                                        <UserIcon size={6} />
-                                      </div>
-                                    )}
-                                    <span className="text-[10px] text-stone-400 dark:text-stone-500 font-bold">{expense.author_name}</span>
-                                  </div>
-                                </>
-                              )}
+                  <AnimatePresence mode="popLayout">
+                    {filteredExpenses.length > 0 ? filteredExpenses.map(expense => {
+                      const Icon = ICON_MAP[expense.category_icon] || MoreHorizontal;
+                      const brandLogo = getBrandLogo(expense.description || expense.category_name);
+                      return (
+                        <motion.div 
+                          layout
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95, height: 0, marginBottom: 0 }}
+                          key={expense.id}
+                          className="relative overflow-hidden rounded-2xl mb-1 group"
+                        >
+                          {/* Background Actions (Swipe) */}
+                          <div className="absolute inset-0 flex items-center justify-between px-6 bg-stone-100 dark:bg-stone-800 rounded-2xl">
+                            <div className="flex items-center gap-2 text-emerald-500 font-bold text-xs">
+                              <Edit2 size={16} /> Editar
+                            </div>
+                            <div className="flex items-center gap-2 text-red-500 font-bold text-xs">
+                              Eliminar <Trash2 size={16} />
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="font-black text-sm text-emerald-600 dark:text-emerald-400">
-                            {privacyMode ? '•••' : `-${expense.amount.toLocaleString()}€`}
-                          </div>
-                          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all">
-                            <button 
-                              onClick={() => openEditExpense(expense)}
-                              className="p-2 text-stone-300 dark:text-stone-600 hover:text-emerald-500 dark:hover:text-emerald-400 transition-all"
-                              title="Editar gasto"
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteExpense(expense.id)}
-                              className="p-2 text-stone-300 dark:text-stone-600 hover:text-red-500 dark:hover:text-red-400 transition-all"
-                              title="Eliminar gasto"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
+
+                          {/* Foreground Draggable Content */}
+                          <motion.div
+                            drag="x"
+                            dragConstraints={{ left: 0, right: 0 }}
+                            dragElastic={0.7}
+                            onDragEnd={(e, info) => {
+                              if (info.offset.x < -100) {
+                                handleDeleteExpense(expense.id);
+                              } else if (info.offset.x > 100) {
+                                openEditExpense(expense);
+                              }
+                            }}
+                            className="relative bg-white dark:bg-stone-900 flex items-center justify-between p-4 rounded-2xl border border-stone-100 dark:border-stone-800 hover:border-emerald-100 dark:hover:border-emerald-900 transition-colors z-10"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div 
+                                className="p-3 rounded-2xl text-white shadow-sm relative flex items-center justify-center overflow-hidden"
+                                style={{ backgroundColor: brandLogo ? '#ffffff' : (expense.category_color === '#10b981' ? 'var(--color-emerald-500)' : expense.category_color) }}
+                              >
+                                {brandLogo && (
+                                  <img 
+                                    src={`${brandLogo}?fallback=false`} 
+                                    alt={expense.description || expense.category_name} 
+                                    referrerPolicy="no-referrer"
+                                    className="absolute inset-0 w-full h-full object-contain p-1" 
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      if (e.currentTarget.parentElement) {
+                                        e.currentTarget.parentElement.style.backgroundColor = expense.category_color === '#10b981' ? 'var(--color-emerald-500)' : expense.category_color;
+                                        const iconEl = e.currentTarget.parentElement.querySelector('svg');
+                                        if (iconEl) iconEl.style.display = 'block';
+                                      }
+                                    }} 
+                                  />
+                                )}
+                                <Icon size={18} style={{ display: brandLogo ? 'none' : 'block' }} />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-bold text-sm text-stone-800 dark:text-stone-200 truncate">{expense.description || expense.category_name}</div>
+                                <div className="flex items-center gap-2">
+                                  <div className="text-[11px] text-stone-400 dark:text-stone-500 font-medium">{format(parseISO(expense.date), 'dd MMM', { locale: es })}</div>
+                                  {user?.account_mode !== 'individual' && expense.author_name && (
+                                    <>
+                                      <span className="text-[10px] text-stone-300 dark:text-stone-700">•</span>
+                                      <div className="flex items-center gap-1">
+                                        {expense.author_image ? (
+                                          <img src={expense.author_image} alt="" className="w-3 h-3 rounded-full object-cover" referrerPolicy="no-referrer" />
+                                        ) : (
+                                          <div className="w-3 h-3 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center">
+                                            <UserIcon size={6} />
+                                          </div>
+                                        )}
+                                        <span className="text-[10px] text-stone-400 dark:text-stone-500 font-bold">{expense.author_name}</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="font-black text-sm text-emerald-600 dark:text-emerald-400">
+                                {privacyMode ? '•••' : `-${expense.amount.toLocaleString()}€`}
+                              </div>
+                              <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all md:flex hidden">
+                                <button 
+                                  onClick={() => openEditExpense(expense)}
+                                  className="p-2 text-stone-300 dark:text-stone-600 hover:text-emerald-500 dark:hover:text-emerald-400 transition-all"
+                                  title="Editar gasto"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteExpense(expense.id)}
+                                  className="p-2 text-stone-300 dark:text-stone-600 hover:text-red-500 dark:hover:text-red-400 transition-all"
+                                  title="Eliminar gasto"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        </motion.div>
+                      );
+                    }) : (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-col items-center justify-center py-20 text-stone-300 dark:text-stone-700 gap-2"
+                      >
+                        <Mountain size={32} strokeWidth={1} />
+                        <p className="text-xs italic">Sin gastos en este periodo</p>
                       </motion.div>
-                    );
-                  }) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-stone-300 dark:text-stone-700 gap-2">
-                      <Mountain size={32} strokeWidth={1} />
-                      <p className="text-xs italic">Sin gastos en este periodo</p>
-                    </div>
-                  )}
+                    )}
+                  </AnimatePresence>
                 </div>
                 
                 {filteredExpenses.length > 0 && (
-                  <button className="w-full mt-4 py-3 text-stone-400 dark:text-stone-500 text-[10px] font-black uppercase tracking-widest hover:text-stone-900 dark:hover:text-stone-100 transition-colors border-t border-stone-50 dark:border-stone-800 pt-4">
+                  <motion.button 
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setShowExpenseListModal(true)}
+                    className="w-full mt-4 py-3 text-stone-400 dark:text-stone-500 text-[10px] font-black uppercase tracking-widest hover:text-stone-900 dark:hover:text-stone-100 transition-colors border-t border-stone-50 dark:border-stone-800 pt-4"
+                  >
                     Ver Historial Completo
-                  </button>
+                  </motion.button>
                 )}
               </div>
             </ResponsiveGridLayout>
@@ -3104,12 +3205,14 @@ export default function App() {
                   </div>
 
 
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-xl shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-[0.98]"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-xl shadow-emerald-200 dark:shadow-emerald-900/20 transition-all"
                   >
                     Guardar Perfil
-                  </button>
+                  </motion.button>
                 </form>
 
                 <div className="h-px bg-stone-100 dark:bg-stone-800" />
@@ -3189,12 +3292,14 @@ export default function App() {
                     </div>
                   )}
 
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="w-full bg-stone-800 hover:bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-xl transition-all active:scale-[0.98]"
+                    className="w-full bg-stone-800 hover:bg-stone-900 text-white py-4 rounded-2xl font-bold shadow-xl transition-all"
                   >
                     Actualizar Contraseña
-                  </button>
+                  </motion.button>
                 </form>
               </div>
             </motion.div>
@@ -3229,12 +3334,21 @@ export default function App() {
                 </button>
               </div>
               <div className="space-y-2">
-                {expenses.map(expense => (
-                  <div key={expense.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800 rounded-2xl">
-                    <div className="font-bold text-sm text-stone-800 dark:text-stone-200">{expense.description || expense.category_name}</div>
-                    <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{expense.amount.toFixed(2)} €</div>
-                  </div>
-                ))}
+                <AnimatePresence mode="popLayout">
+                  {expenses.map(expense => (
+                    <motion.div 
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      key={expense.id} 
+                      className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800 rounded-2xl"
+                    >
+                      <div className="font-bold text-sm text-stone-800 dark:text-stone-200">{expense.description || expense.category_name}</div>
+                      <div className="font-bold text-sm text-stone-900 dark:text-stone-100">{expense.amount.toFixed(2)} €</div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </motion.div>
           </div>
@@ -3343,12 +3457,14 @@ export default function App() {
                   >
                     Cancelar
                   </button>
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-colors"
                   >
                     {editingExpense ? 'Guardar Cambios' : 'Guardar'}
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </motion.div>
@@ -3414,12 +3530,14 @@ export default function App() {
                   >
                     Cancelar
                   </button>
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-colors"
                   >
                     Crear Meta
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </motion.div>
@@ -3507,12 +3625,14 @@ export default function App() {
                   >
                     Volver
                   </button>
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-colors"
                   >
                     Crear
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </motion.div>
@@ -3542,68 +3662,84 @@ export default function App() {
                   <UserIcon size={24} className="text-emerald-600" />
                   Gestión de Usuarios
                 </h2>
-                <button 
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => {
                     setShowAdminPanel(false);
                     setShowUserForm(true);
                   }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm active:scale-95 text-sm font-bold"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors shadow-sm text-sm font-bold"
                 >
                   <Plus size={16} />
                   Nuevo Usuario
-                </button>
+                </motion.button>
               </div>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
                 <div className="space-y-2">
-                  {usersList.length > 0 ? (
-                    usersList.map(u => (
-                      <div key={u.id} className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800 hover:border-emerald-200 dark:hover:border-emerald-900/30 transition-all group">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
-                            {u.username.charAt(0).toUpperCase()}
+                  <AnimatePresence mode="popLayout">
+                    {usersList.length > 0 ? (
+                      usersList.map(u => (
+                        <motion.div 
+                          layout
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          key={u.id} 
+                          className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800 hover:border-emerald-200 dark:hover:border-emerald-900/30 transition-all group"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold">
+                              {u.username.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-bold text-stone-900 dark:text-stone-100">{u.username}</div>
+                              <div className="text-xs text-stone-500 dark:text-stone-400">ID: {u.id}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-bold text-stone-900 dark:text-stone-100">{u.username}</div>
-                            <div className="text-xs text-stone-500 dark:text-stone-400">ID: {u.id}</div>
+                          <div className="flex items-center gap-2">
+                            {(u.username !== 'gugliama' && u.username !== 'marcogugliandolo94@gmail.com') ? (
+                              <>
+                                <select 
+                                  value={u.account_mode}
+                                  onChange={(e) => handleUpdateMode(u.id, e.target.value)}
+                                  className="text-xs bg-stone-100 dark:bg-stone-700 rounded-lg px-2 py-1"
+                                >
+                                  <option value="individual">Individual</option>
+                                  <option value="familiar">Familiar</option>
+                                  <option value="amigos">Amigos</option>
+                                </select>
+                                <button 
+                                  onClick={() => handleDeleteUser(u.id)}
+                                  className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                  title="Eliminar usuario"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full uppercase tracking-widest">
+                                Admin
+                              </span>
+                            )}
                           </div>
+                        </motion.div>
+                      ))
+                    ) : (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-center py-12 bg-stone-50 dark:bg-stone-800/30 rounded-3xl border-2 border-dashed border-stone-100 dark:border-stone-800"
+                      >
+                        <div className="w-12 h-12 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-400">
+                          <UserIcon size={24} />
                         </div>
-                        <div className="flex items-center gap-2">
-                          {(u.username !== 'gugliama' && u.username !== 'marcogugliandolo94@gmail.com') ? (
-                            <>
-                              <select 
-                                value={u.account_mode}
-                                onChange={(e) => handleUpdateMode(u.id, e.target.value)}
-                                className="text-xs bg-stone-100 dark:bg-stone-700 rounded-lg px-2 py-1"
-                              >
-                                <option value="individual">Individual</option>
-                                <option value="familiar">Familiar</option>
-                                <option value="amigos">Amigos</option>
-                              </select>
-                              <button 
-                                onClick={() => handleDeleteUser(u.id)}
-                                className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                                title="Eliminar usuario"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </>
-                          ) : (
-                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 rounded-full uppercase tracking-widest">
-                              Admin
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-12 bg-stone-50 dark:bg-stone-800/30 rounded-3xl border-2 border-dashed border-stone-100 dark:border-stone-800">
-                      <div className="w-12 h-12 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-400">
-                        <UserIcon size={24} />
-                      </div>
-                      <p className="text-stone-500 dark:text-stone-400 font-medium">Cargando lista de usuarios...</p>
-                    </div>
-                  )}
+                        <p className="text-stone-500 dark:text-stone-400 font-medium">Cargando lista de usuarios...</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
               
@@ -3676,12 +3812,14 @@ export default function App() {
                   >
                     Cancelar
                   </button>
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-colors"
                   >
                     Registrar
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </motion.div>
@@ -3775,12 +3913,14 @@ export default function App() {
                   >
                     Cancelar
                   </button>
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-all active:scale-95"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20 transition-colors"
                   >
                     Guardar
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </motion.div>
@@ -3895,13 +4035,15 @@ export default function App() {
                     </div>
                   )}
 
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-bold shadow-lg transition-colors mt-4 flex items-center justify-center gap-2"
                   >
                     {isRegistering ? 'Registrarse' : 'Iniciar Sesión'}
                     <ArrowRight size={18} />
-                  </button>
+                  </motion.button>
 
                   <button 
                     type="button"
@@ -3953,12 +4095,14 @@ export default function App() {
                 >
                   Cancelar
                 </button>
-                <button 
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={handleRemoveMember}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-red-200 dark:shadow-red-900/20 transition-all active:scale-95"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-red-200 dark:shadow-red-900/20 transition-colors"
                 >
                   {memberToRemove.isLeaving ? 'Salir' : 'Eliminar'}
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           </div>
