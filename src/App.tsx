@@ -1935,6 +1935,98 @@ export default function App() {
 
 
 
+            <div className="relative" ref={notificationsRef}>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 bg-stone-100 dark:bg-stone-800 rounded-full hover:bg-stone-200 dark:hover:bg-stone-700 transition-all border border-transparent hover:border-stone-300 dark:hover:border-stone-600 relative h-[40px] w-[40px] flex items-center justify-center"
+              >
+                <Bell size={20} className="text-stone-600 dark:text-stone-400" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-stone-900">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-80 bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 overflow-hidden z-50"
+                  >
+                    <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
+                      <h3 className="font-bold text-stone-900 dark:text-stone-100">Notificaciones</h3>
+                      <button 
+                        onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
+                        className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline"
+                      >
+                        Marcar todo como leído
+                      </button>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <div className="w-12 h-12 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <BellOff size={20} className="text-stone-400" />
+                          </div>
+                          <p className="text-sm text-stone-500 dark:text-stone-400">No tienes notificaciones</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-stone-100 dark:divide-stone-800">
+                          {notifications.map((notification) => (
+                            <div 
+                              key={notification.id} 
+                              onClick={() => {
+                                setNotifications(notifications.map(n => n.id === notification.id ? { ...n, read: true } : n));
+                              }}
+                              className={cn(
+                                "p-4 hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors cursor-pointer",
+                                !notification.read && "bg-emerald-50/30 dark:bg-emerald-900/10"
+                              )}
+                            >
+                              <div className="flex gap-3">
+                                <div className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                                  notification.severity === 'error' ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" :
+                                  notification.severity === 'warning' ? "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" :
+                                  "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                )}>
+                                  {notification.type === 'budget' ? <PieChartIcon size={16} /> :
+                                   notification.type === 'recurring' ? <Calendar size={16} /> :
+                                   <Target size={16} />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className="text-sm font-bold text-stone-900 dark:text-stone-100">{notification.title}</p>
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setNotifications(notifications.filter(n => n.id !== notification.id));
+                                      }}
+                                      className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                  <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5 leading-relaxed">{notification.message}</p>
+                                  <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-2">
+                                    {format(parseISO(notification.date), "d 'de' MMMM, HH:mm", { locale: es })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -2016,6 +2108,17 @@ export default function App() {
                       </button>
 
 
+
+                      <button
+                        onClick={() => {
+                          toggleNotifications();
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition-colors"
+                      >
+                        {notificationsEnabled ? <Bell size={16} /> : <BellOff size={16} />}
+                        <span>{notificationsEnabled ? 'Desactivar Avisos' : 'Activar Avisos'}</span>
+                      </button>
 
                       <button
                         onClick={() => {
